@@ -6,8 +6,8 @@ import '../models/favorite_food.dart';
 import '../models/daily_summary.dart';
 
 class ApiService {
-  // Production Express server URL
-  static const String baseUrl = 'https://macromateapi.onrender.com';
+  // Production server URL
+  static const String baseUrl = 'https://macromateapp.onrender.com';
   // Development URLs (uncomment for local development):
   // static const String baseUrl = 'http://10.0.2.2:3000'; // For Android emulator
   // static const String baseUrl = 'http://localhost:3000'; // For iOS simulator
@@ -81,7 +81,7 @@ class ApiService {
     );
 
     if (response['success'] == true) {
-      return MacroEntry.fromJson(response['data'] as Map<String, dynamic>);
+      return MacroEntry.fromJson(response['data']);
     } else {
       throw Exception(response['error'] ?? 'Failed to calculate macros');
     }
@@ -117,7 +117,7 @@ class ApiService {
       if (response.statusCode >= 200 &&
           response.statusCode < 300 &&
           data['success'] == true) {
-        return MacroEntry.fromJson(data['data'] as Map<String, dynamic>);
+        return MacroEntry.fromJson(data['data']);
       } else {
         throw Exception(data['error'] ?? 'Failed to process image');
       }
@@ -132,18 +132,15 @@ class ApiService {
 
     if (response['success'] == true) {
       final data = response['data'];
-      final mealsData = data['meals'] ?? [];
-      final mealsList = (mealsData as List<dynamic>)
-          .map((meal) => MacroEntry.fromJson(meal as Map<String, dynamic>))
-          .toList();
-
       final totalMacros = data['totalMacros'] ?? {};
       return {
         'totalProtein': (totalMacros['protein'] ?? 0.0).toDouble(),
         'totalCarbs': (totalMacros['carbs'] ?? 0.0).toDouble(),
         'totalFats': (totalMacros['fats'] ?? 0.0).toDouble(),
         'totalCalories': (totalMacros['calories'] ?? 0.0).toDouble(),
-        'meals': mealsList,
+        'meals': (data['meals'] as List<dynamic>)
+            .map((meal) => MacroEntry.fromJson(meal))
+            .toList(),
       };
     } else {
       throw Exception(response['error'] ?? 'Failed to get today\'s macros');
@@ -161,11 +158,9 @@ class ApiService {
     );
 
     if (response['success'] == true) {
-      final data = response['data'] as Map<String, dynamic>;
+      final data = response['data'];
       final dailySummaries = data['dailySummaries'] as List<dynamic>;
-      return dailySummaries
-          .map((item) => DailySummary.fromJson(item as Map<String, dynamic>))
-          .toList();
+      return dailySummaries.map((item) => DailySummary.fromJson(item)).toList();
     } else {
       throw Exception(response['error'] ?? 'Failed to get past macros');
     }
@@ -189,11 +184,9 @@ class ApiService {
     final response = await _makeRequest('/api/favorites/$userId', 'GET');
 
     if (response['success'] == true) {
-      final data = response['data'] as Map<String, dynamic>;
+      final data = response['data'];
       final favorites = data['favorites'] as List<dynamic>;
-      return favorites
-          .map((item) => FavoriteFood.fromJson(item as Map<String, dynamic>))
-          .toList();
+      return favorites.map((item) => FavoriteFood.fromJson(item)).toList();
     } else {
       throw Exception(response['error'] ?? 'Failed to get favorites');
     }
@@ -217,7 +210,7 @@ class ApiService {
     );
 
     if (response['success'] == true) {
-      return FavoriteFood.fromJson(response['data'] as Map<String, dynamic>);
+      return FavoriteFood.fromJson(response['data']);
     } else {
       throw Exception(response['error'] ?? 'Failed to add to favorites');
     }
@@ -235,7 +228,7 @@ class ApiService {
     );
 
     if (response['success'] == true) {
-      return MacroEntry.fromJson(response['data'] as Map<String, dynamic>);
+      return MacroEntry.fromJson(response['data']);
     } else {
       throw Exception(response['error'] ?? 'Failed to add favorite to meals');
     }
