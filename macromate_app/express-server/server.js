@@ -197,25 +197,38 @@ app.post('/api/calculate-image-macros', upload.single('image'), async (req, res)
       });
     }
 
-    // Additional file validation
+    // Additional file validation and MIME type detection
     const imageBuffer = req.file.buffer;
     console.log('Image buffer size:', imageBuffer.length);
+    console.log('Original MIME type:', req.file.mimetype);
     
-    // Check if the file is actually an image by examining the buffer
-    const isValidImage = imageBuffer.length > 0 && (
-      // Check for common image file signatures
-      imageBuffer[0] === 0xFF && imageBuffer[1] === 0xD8 || // JPEG
-      imageBuffer[0] === 0x89 && imageBuffer[1] === 0x50 || // PNG
-      imageBuffer[0] === 0x47 && imageBuffer[1] === 0x49 || // GIF
-      imageBuffer[0] === 0x42 && imageBuffer[1] === 0x4D    // BMP
-    );
+    // Detect correct MIME type based on file signature
+    let mimeType = req.file.mimetype;
+    if (imageBuffer.length > 2) {
+      if (imageBuffer[0] === 0xFF && imageBuffer[1] === 0xD8) {
+        mimeType = 'image/jpeg';
+      } else if (imageBuffer[0] === 0x89 && imageBuffer[1] === 0x50 && imageBuffer[2] === 0x4E) {
+        mimeType = 'image/png';
+      } else if (imageBuffer[0] === 0x47 && imageBuffer[1] === 0x49 && imageBuffer[2] === 0x46) {
+        mimeType = 'image/gif';
+      } else if (imageBuffer[0] === 0x52 && imageBuffer[1] === 0x49 && imageBuffer[2] === 0x46) {
+        mimeType = 'image/webp';
+      } else if (req.file.mimetype === 'application/octet-stream') {
+        // Fallback to jpeg if we can't detect and original was octet-stream
+        mimeType = 'image/jpeg';
+      }
+    }
     
-    if (!isValidImage && req.file.mimetype && !req.file.mimetype.startsWith('image/')) {
+    console.log('Detected MIME type:', mimeType);
+    
+    // Check if the file is actually an image
+    const validMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    if (!validMimeTypes.includes(mimeType)) {
       console.log('File validation failed - not a valid image file');
       return res.status(400).json({
         success: false,
         error: 'Invalid file type',
-        message: 'Please upload a valid image file (JPG, PNG, GIF, BMP)'
+        message: 'Please upload a valid image file (JPG, PNG, GIF, WebP)'
       });
     }
 
@@ -246,7 +259,7 @@ Now analyze the image with weight: "${weight || ''}"`;
     const contents = [
       {
         inlineData: {
-          mimeType: req.file.mimetype,
+          mimeType: mimeType,
           data: imageBuffer.toString("base64"),
         },
       },
