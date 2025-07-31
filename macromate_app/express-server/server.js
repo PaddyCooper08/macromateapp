@@ -442,12 +442,12 @@ app.get('/api/past-macros/:userId/:days?', async (req, res) => {
 app.delete('/api/macro-log/:logId', async (req, res) => {
   try {
     const { logId } = req.params;
-    const { userId } = req.body;
+    const { userId } = req.query;
 
     if (!userId) {
       return res.status(400).json({
         success: false,
-        error: 'Missing userId in request body'
+        error: 'Missing userId in query parameters'
       });
     }
 

@@ -169,9 +169,8 @@ class ApiService {
   // Delete macro log entry
   static Future<void> deleteMacroLog(String logId, String userId) async {
     final response = await _makeRequest(
-      '/api/macro-log/$logId',
+      '/api/macro-log/$logId?userId=$userId',
       'DELETE',
-      body: {'userId': userId},
     );
 
     if (response['success'] != true) {
