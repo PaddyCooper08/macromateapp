@@ -19,15 +19,15 @@ import { calculateMacros, testService, calculateImageMacros } from "./geminiServ
 
 // Validate required environment variables
 if (!process.env.GEMINI_API_KEY) {
-  throw new Error("Missing GEMINI_API_KEY environment variable");
+  console.warn("⚠️ Missing GEMINI_API_KEY environment variable - some features may not work");
 }
 
 if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
-  throw new Error("Missing Supabase environment variables");
+  console.warn("⚠️ Missing Supabase environment variables - database features may not work");
 }
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080;
 
 // Configure multer for image uploads
 const upload = multer({
@@ -73,7 +73,8 @@ app.use(cors({
         'http://localhost:3000', // Allow local Flutter web development
         'http://10.0.2.2:3000', // Android emulator
         'capacitor://localhost', // Capacitor apps
-        'ionic://localhost', // Ionic apps
+        'ionic://localhost',
+        'https://macromate-server-290899070829.europe-west1.run.app', // Ionic apps
         '*' // Allow all origins for mobile apps (since they don't have a fixed origin)
       ]
     : ['http://localhost:3000', 'http://localhost:8080', 'http://10.0.2.2:3000'], // Local development
@@ -705,17 +706,36 @@ app.use((req, res) => {
 async function startServer() {
   try {
     console.log("🤖 Starting MacroMate Express Server...");
+    console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`🔌 Port: ${PORT}`);
 
-    // Test connections
-    console.log("🧪 Testing Gemini service...");
-    await testService();
-    console.log("✅ Gemini service working");
+    // Test connections (non-blocking for Cloud Run)
+    if (process.env.GEMINI_API_KEY && process.env.NODE_ENV !== 'production') {
+      try {
+        console.log("🧪 Testing Gemini service...");
+        await testService();
+        console.log("✅ Gemini service working");
+      } catch (error) {
+        console.warn("⚠️ Gemini service test failed (continuing anyway):", error.message);
+      }
+    } else {
+      console.log("⏭️ Skipping Gemini test for production startup");
+    }
 
-    app.listen(PORT, () => {
+    const server = app.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 MacroMate Express Server is running on port ${PORT}!`);
       console.log(`📱 Ready to serve Flutter app requests`);
       console.log(`🌐 Health check: http://localhost:${PORT}/health`);
     });
+
+    // Graceful shutdown
+    process.on('SIGTERM', () => {
+      console.log('📴 SIGTERM received, shutting down gracefully');
+      server.close(() => {
+        console.log('💤 Process terminated');
+      });
+    });
+
   } catch (error) {
     console.error("❌ Failed to start server:", error);
     process.exit(1);
