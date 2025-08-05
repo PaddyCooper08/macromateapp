@@ -6,8 +6,9 @@ import '../models/favorite_food.dart';
 import '../models/daily_summary.dart';
 
 class ApiService {
-  // Production server URL
-  static const String baseUrl = 'https://macromateapp.onrender.com';
+  // Production server URL - Google Cloud Run
+  static const String baseUrl =
+      'https://macromate-server-290899070829.europe-west1.run.app';
   // Development URLs (uncomment for local development):
   // static const String baseUrl = 'http://10.0.2.2:3000'; // For Android emulator
   // static const String baseUrl = 'http://localhost:3000'; // For iOS simulator
