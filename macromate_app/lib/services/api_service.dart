@@ -37,6 +37,13 @@ class ApiService {
             body: body != null ? jsonEncode(body) : null,
           );
           break;
+        case 'PUT':
+          response = await http.put(
+            uri,
+            headers: defaultHeaders,
+            body: body != null ? jsonEncode(body) : null,
+          );
+          break;
         case 'DELETE':
           response = await http.delete(
             uri,
@@ -167,6 +174,31 @@ class ApiService {
     }
   }
 
+  // Get macros for a specific day (YYYY-MM-DD)
+  static Future<Map<String, dynamic>> getDayMacros(
+    String userId,
+    String date,
+  ) async {
+    final response = await _makeRequest('/api/day-macros/$userId/$date', 'GET');
+
+    if (response['success'] == true) {
+      final data = response['data'];
+      final totalMacros = data['totalMacros'] ?? {};
+      return {
+        'date': data['date'] as String,
+        'totalProtein': (totalMacros['protein'] ?? 0.0).toDouble(),
+        'totalCarbs': (totalMacros['carbs'] ?? 0.0).toDouble(),
+        'totalFats': (totalMacros['fats'] ?? 0.0).toDouble(),
+        'totalCalories': (totalMacros['calories'] ?? 0.0).toDouble(),
+        'meals': (data['meals'] as List<dynamic>)
+            .map((meal) => MacroEntry.fromJson(meal))
+            .toList(),
+      };
+    } else {
+      throw Exception(response['error'] ?? 'Failed to get day\'s macros');
+    }
+  }
+
   // Delete macro log entry
   static Future<void> deleteMacroLog(String logId, String userId) async {
     final response = await _makeRequest(
@@ -243,6 +275,25 @@ class ApiService {
 
     if (response['success'] != true) {
       throw Exception(response['error'] ?? 'Failed to delete favorite');
+    }
+  }
+
+  // Edit favorite name
+  static Future<FavoriteFood> editFavorite(
+    String userId,
+    String favoriteId,
+    String newName,
+  ) async {
+    final response = await _makeRequest(
+      '/api/favorites/$userId/$favoriteId',
+      'PUT',
+      body: {'foodItem': newName},
+    );
+
+    if (response['success'] == true) {
+      return FavoriteFood.fromJson(response['data']);
+    } else {
+      throw Exception(response['error'] ?? 'Failed to edit favorite');
     }
   }
 }

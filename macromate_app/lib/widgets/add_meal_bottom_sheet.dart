@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:gal/gal.dart';
 import '../providers/macro_provider.dart';
+import '../providers/theme_provider.dart';
 
 class AddMealBottomSheet extends StatefulWidget {
   const AddMealBottomSheet({super.key});
@@ -41,16 +43,16 @@ class _AddMealBottomSheetState extends State<AddMealBottomSheet> {
       if (success) {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Meal added successfully!'),
-            backgroundColor: Colors.green,
-          ),
+          const SnackBar(content: Text('Meal added successfully!')),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to add meal: ${macroProvider.error}'),
-            backgroundColor: Colors.red,
+            backgroundColor: Provider.of<ThemeProvider>(
+              context,
+              listen: false,
+            ).getErrorColor(context),
           ),
         );
       }
@@ -65,6 +67,18 @@ class _AddMealBottomSheetState extends State<AddMealBottomSheet> {
       );
 
       if (image == null) return;
+
+      // If taken from camera, save to gallery in an album where supported
+      if (source == ImageSource.camera) {
+        try {
+          if (await Gal.hasAccess(toAlbum: true) == false) {
+            await Gal.requestAccess(toAlbum: true);
+          }
+          await Gal.putImage(image.path, album: 'MacroMate');
+        } catch (_) {
+          // Ignore failures to avoid blocking user flow
+        }
+      }
 
       setState(() => _isLoading = true);
 
@@ -86,14 +100,16 @@ class _AddMealBottomSheetState extends State<AddMealBottomSheet> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Meal added from image successfully!'),
-              backgroundColor: Colors.green,
             ),
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Failed to process image: ${macroProvider.error}'),
-              backgroundColor: Colors.red,
+              backgroundColor: Provider.of<ThemeProvider>(
+                context,
+                listen: false,
+              ).getErrorColor(context),
             ),
           );
         }
@@ -104,7 +120,10 @@ class _AddMealBottomSheetState extends State<AddMealBottomSheet> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error processing image: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: Provider.of<ThemeProvider>(
+              context,
+              listen: false,
+            ).getErrorColor(context),
           ),
         );
       }
@@ -114,9 +133,9 @@ class _AddMealBottomSheetState extends State<AddMealBottomSheet> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       padding: EdgeInsets.only(
         left: 20,
@@ -134,7 +153,7 @@ class _AddMealBottomSheetState extends State<AddMealBottomSheet> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.grey[300],
+                color: Theme.of(context).dividerColor,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -159,16 +178,6 @@ class _AddMealBottomSheetState extends State<AddMealBottomSheet> {
                   onPressed: _isLoading ? null : () => _showTextInputDialog(),
                   icon: const Icon(Icons.text_fields),
                   label: const Text('Describe Food'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue[50],
-                    foregroundColor: Colors.blue[700],
-                    elevation: 0,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      side: BorderSide(color: Colors.blue[200]!),
-                    ),
-                  ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -177,16 +186,6 @@ class _AddMealBottomSheetState extends State<AddMealBottomSheet> {
                   onPressed: _isLoading ? null : () => _showImageInputDialog(),
                   icon: const Icon(Icons.photo_camera),
                   label: const Text('Scan Label'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green[50],
-                    foregroundColor: Colors.green[700],
-                    elevation: 0,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      side: BorderSide(color: Colors.green[200]!),
-                    ),
-                  ),
                 ),
               ),
             ],
@@ -280,15 +279,6 @@ class _AddMealBottomSheetState extends State<AddMealBottomSheet> {
                     },
                     icon: const Icon(Icons.camera_alt),
                     label: const Text('Camera'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue[50],
-                      foregroundColor: Colors.blue[700],
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        side: BorderSide(color: Colors.blue[200]!),
-                      ),
-                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -300,15 +290,6 @@ class _AddMealBottomSheetState extends State<AddMealBottomSheet> {
                     },
                     icon: const Icon(Icons.photo_library),
                     label: const Text('Gallery'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green[50],
-                      foregroundColor: Colors.green[700],
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        side: BorderSide(color: Colors.green[200]!),
-                      ),
-                    ),
                   ),
                 ),
               ],

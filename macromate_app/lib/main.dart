@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'providers/macro_provider.dart';
+import 'providers/theme_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 
@@ -13,17 +14,24 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (context) => MacroProvider(),
-      child: MaterialApp(
-        title: 'MacroMate',
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-          useMaterial3: true,
-          appBarTheme: const AppBarTheme(centerTitle: true),
-        ),
-        home: const SplashScreen(),
-        debugShowCheckedModeBanner: false,
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (context) => MacroProvider()),
+        ChangeNotifierProvider(create: (context) => ThemeProvider()),
+      ],
+      child: Consumer<ThemeProvider>(
+        builder: (context, themeProvider, child) {
+          return MaterialApp(
+            title: 'MacroMate',
+            theme: themeProvider.lightTheme,
+            darkTheme: themeProvider.darkTheme,
+            themeMode: themeProvider.isDarkMode
+                ? ThemeMode.dark
+                : ThemeMode.light,
+            home: const SplashScreen(),
+            debugShowCheckedModeBanner: false,
+          );
+        },
       ),
     );
   }
@@ -62,8 +70,9 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Scaffold(
-      backgroundColor: Colors.blue[500],
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -72,31 +81,30 @@ class _SplashScreenState extends State<SplashScreen> {
               width: 120,
               height: 120,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: cs.onPrimary,
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: Icon(
-                Icons.restaurant_menu,
-                size: 60,
-                color: Colors.blue[500],
-              ),
+              child: Icon(Icons.restaurant_menu, size: 60, color: cs.primary),
             ),
             const SizedBox(height: 24),
-            const Text(
+            Text(
               'MacroMate',
               style: TextStyle(
                 fontSize: 32,
                 fontWeight: FontWeight.bold,
-                color: Colors.white,
+                color: cs.onBackground,
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'Track your macros with ease',
-              style: TextStyle(fontSize: 16, color: Colors.white70),
+              style: TextStyle(
+                fontSize: 16,
+                color: cs.onBackground.withOpacity(0.7),
+              ),
             ),
             const SizedBox(height: 48),
-            const CircularProgressIndicator(color: Colors.white),
+            CircularProgressIndicator(color: cs.onBackground),
           ],
         ),
       ),

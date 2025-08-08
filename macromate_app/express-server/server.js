@@ -14,6 +14,7 @@ import {
   saveFavoriteItem,
   getFavoriteItems,
   deleteFavoriteItem,
+  updateFavoriteItem,
 } from "./supabaseClient.js";
 import { calculateMacros, testService, calculateImageMacros } from "./geminiService.js";
 
@@ -399,6 +400,87 @@ app.get('/api/today-macros/:userId', async (req, res) => {
   }
 });
 
+// NEW: Get macros for a specific day for a user
+app.get('/api/day-macros/:userId/:date', async (req, res) => {
+  try {
+    const { userId, date } = req.params;
+
+    // Basic date validation (YYYY-MM-DD)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid date format',
+        message: 'Date must be in YYYY-MM-DD format'
+      });
+    }
+
+    const dailyMacros = await getDailyMacros(userId, date);
+
+    if (dailyMacros.length === 0) {
+      return res.json({
+        success: true,
+        data: {
+          date,
+          totalMacros: {
+            protein: 0,
+            carbs: 0,
+            fats: 0,
+            calories: 0
+          },
+          meals: [],
+          message: 'No food entries logged for this day.'
+        }
+      });
+    }
+
+    // Calculate totals
+    let totalProtein = 0;
+    let totalCarbs = 0;
+    let totalFats = 0;
+    let totalCalories = 0;
+
+    dailyMacros.forEach((entry) => {
+      totalProtein += parseFloat(entry.protein_g || 0);
+      totalCarbs += parseFloat(entry.carbs_g || 0);
+      totalFats += parseFloat(entry.fats_g || 0);
+      totalCalories += parseFloat(entry.calories || 0);
+    });
+
+    // Format meals data
+    const meals = dailyMacros.map((entry) => ({
+      id: entry.id,
+      foodItem: entry.food_item,
+      protein: parseFloat(entry.protein_g || 0),
+      carbs: parseFloat(entry.carbs_g || 0),
+      fats: parseFloat(entry.fats_g || 0),
+      calories: parseFloat(entry.calories || 0),
+      mealTime: entry.meal_time,
+      date: entry.log_date
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        date,
+        totalMacros: {
+          protein: parseFloat(totalProtein.toFixed(1)),
+          carbs: parseFloat(totalCarbs.toFixed(1)),
+          fats: parseFloat(totalFats.toFixed(1)),
+          calories: parseFloat(totalCalories.toFixed(1))
+        },
+        meals
+      }
+    });
+  } catch (error) {
+    console.error('Error getting day\'s macros:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve day\'s macros',
+      message: error.message
+    });
+  }
+});
+
 // Get past macros for a user
 app.get('/api/past-macros/:userId/:days?', async (req, res) => {
   try {
@@ -652,6 +734,44 @@ app.delete('/api/favorites/:userId/:favoriteId', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to remove from favourites',
+      message: error.message
+    });
+  }
+});
+
+// Edit a favorite food item name
+app.put('/api/favorites/:userId/:favoriteId', async (req, res) => {
+  try {
+    const { userId, favoriteId } = req.params;
+    const { foodItem } = req.body;
+
+    if (!foodItem || foodItem.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        error: 'Food item name is required'
+      });
+    }
+
+    const updatedData = await updateFavoriteItem(favoriteId, userId, foodItem.trim());
+
+    res.json({
+      success: true,
+      data: {
+        id: updatedData.id,
+        foodItem: updatedData.food_item,
+        protein: parseFloat(updatedData.protein_g),
+        carbs: parseFloat(updatedData.carbs_g),
+        fats: parseFloat(updatedData.fats_g),
+        calories: parseFloat(updatedData.calories),
+        createdAt: updatedData.created_at
+      },
+      message: 'Favorite updated successfully!'
+    });
+  } catch (error) {
+    console.error('Error updating favorite:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update favorite',
       message: error.message
     });
   }

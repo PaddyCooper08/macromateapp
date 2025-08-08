@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../providers/theme_provider.dart';
+import 'package:provider/provider.dart';
 
 class MacroSummaryCard extends StatelessWidget {
   final double totalProtein;
@@ -36,13 +38,27 @@ class MacroSummaryCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.orange[50],
+                color: Provider.of<ThemeProvider>(
+                  context,
+                  listen: false,
+                ).getCardBackgroundColor(context),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.orange[200]!),
+                border: Border.all(
+                  color: Provider.of<ThemeProvider>(
+                    context,
+                    listen: false,
+                  ).getCardBorderColor(context),
+                ),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.local_fire_department, color: Colors.orange[600]),
+                  Icon(
+                    Icons.local_fire_department,
+                    color: Provider.of<ThemeProvider>(
+                      context,
+                      listen: false,
+                    ).getCaloriesColor(context),
+                  ),
                   const SizedBox(width: 12),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -50,14 +66,20 @@ class MacroSummaryCard extends StatelessWidget {
                       Text(
                         'Calories',
                         style: TextStyle(
-                          color: Colors.orange[800],
+                          color: Provider.of<ThemeProvider>(
+                            context,
+                            listen: false,
+                          ).getCaloriesColor(context),
                           fontWeight: FontWeight.w500,
                         ),
                       ),
                       Text(
                         '${totalCalories.toStringAsFixed(0)} kcal',
                         style: TextStyle(
-                          color: Colors.orange[900],
+                          color: Provider.of<ThemeProvider>(
+                            context,
+                            listen: false,
+                          ).getCaloriesColor(context),
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
@@ -77,13 +99,27 @@ class MacroSummaryCard extends StatelessWidget {
                   width: double.infinity,
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.red[50],
+                    color: Provider.of<ThemeProvider>(
+                      context,
+                      listen: false,
+                    ).getButtonBackgroundColor(context),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.red[200]!),
+                    border: Border.all(
+                      color: Provider.of<ThemeProvider>(
+                        context,
+                        listen: false,
+                      ).getCardBorderColor(context),
+                    ),
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.fitness_center, color: Colors.red[600]),
+                      Icon(
+                        Icons.fitness_center,
+                        color: Provider.of<ThemeProvider>(
+                          context,
+                          listen: false,
+                        ).getProteinColor(context),
+                      ),
                       const SizedBox(width: 12),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -91,14 +127,20 @@ class MacroSummaryCard extends StatelessWidget {
                           Text(
                             'Protein',
                             style: TextStyle(
-                              color: Colors.red[800],
+                              color: Provider.of<ThemeProvider>(
+                                context,
+                                listen: false,
+                              ).getProteinColor(context),
                               fontWeight: FontWeight.w500,
                             ),
                           ),
                           Text(
                             '${totalProtein.toStringAsFixed(1)} g',
                             style: TextStyle(
-                              color: Colors.red[900],
+                              color: Provider.of<ThemeProvider>(
+                                context,
+                                listen: false,
+                              ).getProteinColor(context),
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
                             ),
@@ -115,13 +157,27 @@ class MacroSummaryCard extends StatelessWidget {
                   width: double.infinity,
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.blue[50],
+                    color: Provider.of<ThemeProvider>(
+                      context,
+                      listen: false,
+                    ).getButtonBackgroundColor(context),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.blue[200]!),
+                    border: Border.all(
+                      color: Provider.of<ThemeProvider>(
+                        context,
+                        listen: false,
+                      ).getCardBorderColor(context),
+                    ),
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.grain, color: Colors.blue[600]),
+                      Icon(
+                        Icons.grain,
+                        color: Provider.of<ThemeProvider>(
+                          context,
+                          listen: false,
+                        ).getCarbsColor(context),
+                      ),
                       const SizedBox(width: 12),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -129,14 +185,20 @@ class MacroSummaryCard extends StatelessWidget {
                           Text(
                             'Carbs',
                             style: TextStyle(
-                              color: Colors.blue[800],
+                              color: Provider.of<ThemeProvider>(
+                                context,
+                                listen: false,
+                              ).getCarbsColor(context),
                               fontWeight: FontWeight.w500,
                             ),
                           ),
                           Text(
                             '${totalCarbs.toStringAsFixed(1)} g',
                             style: TextStyle(
-                              color: Colors.blue[900],
+                              color: Provider.of<ThemeProvider>(
+                                context,
+                                listen: false,
+                              ).getCarbsColor(context),
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
                             ),
@@ -153,13 +215,27 @@ class MacroSummaryCard extends StatelessWidget {
                   width: double.infinity,
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.green[50],
+                    color: Provider.of<ThemeProvider>(
+                      context,
+                      listen: false,
+                    ).getButtonBackgroundColor(context),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.green[200]!),
+                    border: Border.all(
+                      color: Provider.of<ThemeProvider>(
+                        context,
+                        listen: false,
+                      ).getCardBorderColor(context),
+                    ),
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.water_drop, color: Colors.green[600]),
+                      Icon(
+                        Icons.water_drop,
+                        color: Provider.of<ThemeProvider>(
+                          context,
+                          listen: false,
+                        ).getFatsColor(context),
+                      ),
                       const SizedBox(width: 12),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -167,14 +243,20 @@ class MacroSummaryCard extends StatelessWidget {
                           Text(
                             'Fats',
                             style: TextStyle(
-                              color: Colors.green[800],
+                              color: Provider.of<ThemeProvider>(
+                                context,
+                                listen: false,
+                              ).getFatsColor(context),
                               fontWeight: FontWeight.w500,
                             ),
                           ),
                           Text(
                             '${totalFats.toStringAsFixed(1)} g',
                             style: TextStyle(
-                              color: Colors.green[900],
+                              color: Provider.of<ThemeProvider>(
+                                context,
+                                listen: false,
+                              ).getFatsColor(context),
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
                             ),

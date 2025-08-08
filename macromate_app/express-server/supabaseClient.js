@@ -268,4 +268,34 @@ async function saveMacrosToDb(userId, date, mealTime, foodItem, protein, carbs, 
     }
   }
 
-export { saveMacrosToDb, getDailyMacros, getPreviousDaysMacros, deleteMacroLog, saveFavoriteItem, getFavoriteItems, deleteFavoriteItem };
+  /**
+   * Update a favorite food item name
+   * @param {string} favoriteId - The UUID of the favorite item to update
+   * @param {string} userId - The user ID to ensure ownership
+   * @param {string} newFoodItem - The new food item name
+   */
+  async function updateFavoriteItem(favoriteId, userId, newFoodItem) {
+    try {
+      const { data, error } = await supabase
+        .from('favorite_foods')
+        .update({ food_item: newFoodItem })
+        .match({ id: favoriteId, user_id: userId.toString() })
+        .select();
+
+      if (error) {
+        console.error('Supabase update error:', error);
+        throw new Error(`Failed to update favorite item: ${error.message}`);
+      }
+
+      if (data.length === 0) {
+        throw new Error('Favorite item not found or user does not have permission to update.');
+      }
+
+      return data[0];
+    } catch (error) {
+      console.error('Error updating favorite item:', error);
+      throw error;
+    }
+  }
+
+export { saveMacrosToDb, getDailyMacros, getPreviousDaysMacros, deleteMacroLog, saveFavoriteItem, getFavoriteItems, deleteFavoriteItem, updateFavoriteItem };

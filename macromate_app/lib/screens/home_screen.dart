@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/macro_provider.dart';
+import '../providers/theme_provider.dart';
 import '../widgets/macro_summary_card.dart';
 import '../widgets/meal_list.dart';
 import '../widgets/add_meal_fab.dart';
+import '../widgets/custom_app_bar.dart';
 import 'favorites_screen.dart';
 import 'history_screen.dart';
 import 'login_screen.dart';
@@ -63,11 +65,8 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_getAppBarTitle()),
-        backgroundColor: Colors.blue[500],
-        foregroundColor: Colors.white,
-        elevation: 0,
+      appBar: CustomAppBar(
+        title: _getAppBarTitle(),
         actions: [
           if (_currentIndex == 0)
             IconButton(
@@ -91,9 +90,23 @@ class _HomeScreenState extends State<HomeScreen> {
                 value: 'logout',
                 child: Row(
                   children: [
-                    Icon(Icons.logout, color: Colors.red[600]),
+                    Icon(
+                      Icons.logout,
+                      color: Provider.of<ThemeProvider>(
+                        context,
+                        listen: false,
+                      ).getErrorColor(context),
+                    ),
                     const SizedBox(width: 8),
-                    Text('Logout', style: TextStyle(color: Colors.red[600])),
+                    Text(
+                      'Logout',
+                      style: TextStyle(
+                        color: Provider.of<ThemeProvider>(
+                          context,
+                          listen: false,
+                        ).getErrorColor(context),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -108,12 +121,24 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.error_outline, size: 64, color: Colors.red[400]),
+                  Icon(
+                    Icons.error_outline,
+                    size: 64,
+                    color: Provider.of<ThemeProvider>(
+                      context,
+                      listen: false,
+                    ).getErrorColor(context),
+                  ),
                   const SizedBox(height: 16),
                   Text(
                     'Error: ${macroProvider.error}',
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.red[600]),
+                    style: TextStyle(
+                      color: Provider.of<ThemeProvider>(
+                        context,
+                        listen: false,
+                      ).getErrorColor(context),
+                    ),
                   ),
                   const SizedBox(height: 16),
                   ElevatedButton(
@@ -140,7 +165,10 @@ class _HomeScreenState extends State<HomeScreen> {
             _currentIndex = index;
           });
         },
-        selectedItemColor: Colors.blue[500],
+        selectedItemColor: Provider.of<ThemeProvider>(
+          context,
+          listen: false,
+        ).getAccentColor(context),
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.today), label: 'Today'),
           BottomNavigationBarItem(

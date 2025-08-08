@@ -19,6 +19,13 @@ class MacroProvider with ChangeNotifier {
   double _totalFats = 0.0;
   double _totalCalories = 0.0;
 
+  // Transient state for selected day details
+  List<MacroEntry> _selectedDayMeals = [];
+  double _selectedDayProtein = 0.0;
+  double _selectedDayCarbs = 0.0;
+  double _selectedDayFats = 0.0;
+  double _selectedDayCalories = 0.0;
+
   // Getters
   String? get userId => _userId;
   List<MacroEntry> get todaysMeals => _todaysMeals;
@@ -31,6 +38,12 @@ class MacroProvider with ChangeNotifier {
   double get totalCarbs => _totalCarbs;
   double get totalFats => _totalFats;
   double get totalCalories => _totalCalories;
+
+  List<MacroEntry> get selectedDayMeals => _selectedDayMeals;
+  double get selectedDayProtein => _selectedDayProtein;
+  double get selectedDayCarbs => _selectedDayCarbs;
+  double get selectedDayFats => _selectedDayFats;
+  double get selectedDayCalories => _selectedDayCalories;
 
   bool get isLoggedIn => _userId != null;
 
@@ -281,6 +294,36 @@ class MacroProvider with ChangeNotifier {
     }
   }
 
+  // Edit favorite name
+  Future<bool> editFavorite(String favoriteId, String newName) async {
+    if (_userId == null) return false;
+
+    try {
+      _setLoading(true);
+      _setError(null);
+
+      final updatedFavorite = await ApiService.editFavorite(
+        _userId!,
+        favoriteId,
+        newName,
+      );
+
+      final index = _favorites.indexWhere((fav) => fav.id == favoriteId);
+      if (index != -1) {
+        _favorites[index] = updatedFavorite;
+      }
+
+      _setLoading(false);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _setError(e.toString());
+      _setLoading(false);
+      notifyListeners();
+      return false;
+    }
+  }
+
   // Load past summaries
   Future<void> loadPastSummaries([int days = 7]) async {
     if (_userId == null) return;
@@ -293,6 +336,42 @@ class MacroProvider with ChangeNotifier {
       _setError(e.toString());
       notifyListeners();
     }
+  }
+
+  // Load macros for an arbitrary date (YYYY-MM-DD)
+  Future<bool> loadDayMacros(String date) async {
+    if (_userId == null) return false;
+
+    try {
+      _setLoading(true);
+      _setError(null);
+
+      final data = await ApiService.getDayMacros(_userId!, date);
+
+      _selectedDayMeals = data['meals'] as List<MacroEntry>;
+      _selectedDayProtein = data['totalProtein'] as double;
+      _selectedDayCarbs = data['totalCarbs'] as double;
+      _selectedDayFats = data['totalFats'] as double;
+      _selectedDayCalories = data['totalCalories'] as double;
+
+      _setLoading(false);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _setError(e.toString());
+      _setLoading(false);
+      notifyListeners();
+      return false;
+    }
+  }
+
+  void clearSelectedDay() {
+    _selectedDayMeals = [];
+    _selectedDayProtein = 0.0;
+    _selectedDayCarbs = 0.0;
+    _selectedDayFats = 0.0;
+    _selectedDayCalories = 0.0;
+    notifyListeners();
   }
 
   // Helper methods

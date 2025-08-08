@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/macro_provider.dart';
+import '../providers/theme_provider.dart';
 import 'home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -38,7 +39,8 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      // Use themed background so dark mode stays black/white only
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -51,13 +53,22 @@ class _LoginScreenState extends State<LoginScreen> {
                   width: 120,
                   height: 120,
                   decoration: BoxDecoration(
-                    color: Colors.blue[500],
+                    color: Provider.of<ThemeProvider>(context).isDarkMode
+                        ? Colors.black
+                        : Colors.white,
                     borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: Provider.of<ThemeProvider>(context).isDarkMode
+                          ? Colors.white24
+                          : Colors.black12,
+                    ),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.restaurant_menu,
                     size: 60,
-                    color: Colors.white,
+                    color: Provider.of<ThemeProvider>(context).isDarkMode
+                        ? Colors.white
+                        : Colors.black,
                   ),
                 ),
                 const SizedBox(height: 32),
@@ -134,22 +145,12 @@ class _LoginScreenState extends State<LoginScreen> {
                                 onPressed: macroProvider.isLoading
                                     ? null
                                     : _login,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.blue[500],
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 16,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
+                                // Colors come from elevatedButtonTheme
                                 child: macroProvider.isLoading
                                     ? const SizedBox(
                                         height: 20,
                                         width: 20,
                                         child: CircularProgressIndicator(
-                                          color: Colors.white,
                                           strokeWidth: 2,
                                         ),
                                       )
@@ -173,24 +174,44 @@ class _LoginScreenState extends State<LoginScreen> {
                                   child: Container(
                                     padding: const EdgeInsets.all(12),
                                     decoration: BoxDecoration(
-                                      color: Colors.red[50],
+                                      color:
+                                          Provider.of<ThemeProvider>(
+                                            context,
+                                          ).isDarkMode
+                                          ? Colors.white10
+                                          : Colors.red[50],
                                       borderRadius: BorderRadius.circular(8),
                                       border: Border.all(
-                                        color: Colors.red[200]!,
+                                        color:
+                                            Provider.of<ThemeProvider>(
+                                              context,
+                                            ).isDarkMode
+                                            ? Colors.white24
+                                            : Colors.red[200]!,
                                       ),
                                     ),
                                     child: Row(
                                       children: [
                                         Icon(
                                           Icons.error_outline,
-                                          color: Colors.red[700],
+                                          color:
+                                              Provider.of<ThemeProvider>(
+                                                context,
+                                              ).isDarkMode
+                                              ? Colors.white
+                                              : Colors.red[700],
                                         ),
                                         const SizedBox(width: 8),
                                         Expanded(
                                           child: Text(
                                             macroProvider.error!,
                                             style: TextStyle(
-                                              color: Colors.red[700],
+                                              color:
+                                                  Provider.of<ThemeProvider>(
+                                                    context,
+                                                  ).isDarkMode
+                                                  ? Colors.white
+                                                  : Colors.red[700],
                                             ),
                                           ),
                                         ),
@@ -198,7 +219,12 @@ class _LoginScreenState extends State<LoginScreen> {
                                           onPressed: macroProvider.clearError,
                                           icon: Icon(
                                             Icons.close,
-                                            color: Colors.red[700],
+                                            color:
+                                                Provider.of<ThemeProvider>(
+                                                  context,
+                                                ).isDarkMode
+                                                ? Colors.white
+                                                : Colors.red[700],
                                           ),
                                           iconSize: 20,
                                         ),
@@ -219,28 +245,42 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 // Info Card
                 Card(
-                  color: Colors.blue[50],
+                  color: Provider.of<ThemeProvider>(context).isDarkMode
+                      ? Colors.black
+                      : Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(
+                      color: Provider.of<ThemeProvider>(context).isDarkMode
+                          ? Colors.white24
+                          : Colors.black12,
+                    ),
                   ),
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Column(
                       children: [
-                        Icon(Icons.info_outline, color: Colors.blue[700]),
+                        Icon(
+                          Icons.info_outline,
+                          color: Provider.of<ThemeProvider>(context).isDarkMode
+                              ? Colors.white
+                              : Colors.black,
+                        ),
                         const SizedBox(height: 8),
                         Text(
                           'How to find your Telegram ID:',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            color: Colors.blue[700],
+                            color:
+                                Provider.of<ThemeProvider>(context).isDarkMode
+                                ? Colors.white
+                                : Colors.black,
                           ),
                         ),
                         const SizedBox(height: 4),
-                        Text(
+                        const Text(
                           '1. Open Telegram\n2. Search for @userinfobot\n3. Start a chat and it will show your ID',
                           textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.blue[600]),
                         ),
                       ],
                     ),

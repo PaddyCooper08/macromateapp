@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../models/macro_entry.dart';
 import '../providers/macro_provider.dart';
+import '../providers/theme_provider.dart';
 
 class MealList extends StatelessWidget {
   final List<MacroEntry> meals;
@@ -17,20 +18,30 @@ class MealList extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.restaurant_menu, size: 64, color: Colors.grey[400]),
+              Icon(
+                Icons.restaurant_menu,
+                size: 64,
+                color: Theme.of(
+                  context,
+                ).colorScheme.onBackground.withOpacity(0.4),
+              ),
               const SizedBox(height: 16),
               Text(
                 'No meals logged today',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(color: Colors.grey[600]),
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onBackground.withOpacity(0.6),
+                ),
               ),
               const SizedBox(height: 8),
               Text(
                 'Tap the + button to add your first meal',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyMedium?.copyWith(color: Colors.grey[500]),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onBackground.withOpacity(0.5),
+                ),
               ),
             ],
           ),
@@ -38,19 +49,21 @@ class MealList extends StatelessWidget {
       );
     }
 
+    final items = meals.toList().reversed.toList();
+
     return SliverList(
       delegate: SliverChildBuilderDelegate((context, index) {
-        final meal = meals[index];
+        final meal = items[index];
         return Padding(
           padding: EdgeInsets.fromLTRB(
             16,
             index == 0 ? 0 : 8,
             16,
-            index == meals.length - 1 ? 16 : 8,
+            index == items.length - 1 ? 16 : 8,
           ),
           child: MealCard(meal: meal),
         );
-      }, childCount: meals.length),
+      }, childCount: items.length),
     );
   }
 }
@@ -89,7 +102,9 @@ class MealCard extends StatelessWidget {
                       Text(
                         timeFormatter.format(meal.mealTime),
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.grey[600],
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onBackground.withOpacity(0.6),
                         ),
                       ),
                     ],
@@ -102,11 +117,17 @@ class MealCard extends StatelessWidget {
                       onPressed: () => _addToFavorites(context),
                       icon: Icon(
                         Icons.favorite_border,
-                        color: Colors.blue[600],
+                        color: Provider.of<ThemeProvider>(
+                          context,
+                          listen: false,
+                        ).getAccentColor(context),
                       ),
                       tooltip: 'Add to Favorites',
                       style: IconButton.styleFrom(
-                        backgroundColor: Colors.blue[50],
+                        backgroundColor: Provider.of<ThemeProvider>(
+                          context,
+                          listen: false,
+                        ).getButtonBackgroundColor(context),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -116,10 +137,19 @@ class MealCard extends StatelessWidget {
                     const SizedBox(width: 8),
                     IconButton(
                       onPressed: () => _deleteMeal(context),
-                      icon: Icon(Icons.delete_outline, color: Colors.red[600]),
+                      icon: Icon(
+                        Icons.delete_outline,
+                        color: Provider.of<ThemeProvider>(
+                          context,
+                          listen: false,
+                        ).getErrorColor(context),
+                      ),
                       tooltip: 'Delete',
                       style: IconButton.styleFrom(
-                        backgroundColor: Colors.red[50],
+                        backgroundColor: Provider.of<ThemeProvider>(
+                          context,
+                          listen: false,
+                        ).getButtonBackgroundColor(context),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -140,7 +170,10 @@ class MealCard extends StatelessWidget {
                     label: 'Protein',
                     value: meal.protein,
                     unit: 'g',
-                    color: Colors.red[400]!,
+                    color: Provider.of<ThemeProvider>(
+                      context,
+                      listen: false,
+                    ).getProteinColor(context),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -149,7 +182,10 @@ class MealCard extends StatelessWidget {
                     label: 'Carbs',
                     value: meal.carbs,
                     unit: 'g',
-                    color: Colors.blue[400]!,
+                    color: Provider.of<ThemeProvider>(
+                      context,
+                      listen: false,
+                    ).getCarbsColor(context),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -158,7 +194,10 @@ class MealCard extends StatelessWidget {
                     label: 'Fats',
                     value: meal.fats,
                     unit: 'g',
-                    color: Colors.green[400]!,
+                    color: Provider.of<ThemeProvider>(
+                      context,
+                      listen: false,
+                    ).getFatsColor(context),
                   ),
                 ),
               ],
@@ -170,23 +209,37 @@ class MealCard extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
               decoration: BoxDecoration(
-                color: Colors.orange[50],
+                color: Provider.of<ThemeProvider>(
+                  context,
+                  listen: false,
+                ).getCardBackgroundColor(context),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.orange[200]!),
+                border: Border.all(
+                  color: Provider.of<ThemeProvider>(
+                    context,
+                    listen: false,
+                  ).getCardBorderColor(context),
+                ),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
                     Icons.local_fire_department,
-                    color: Colors.orange[600],
+                    color: Provider.of<ThemeProvider>(
+                      context,
+                      listen: false,
+                    ).getCaloriesColor(context),
                     size: 16,
                   ),
                   const SizedBox(width: 4),
                   Text(
                     '${meal.calories.toStringAsFixed(0)} kcal',
                     style: TextStyle(
-                      color: Colors.orange[800],
+                      color: Provider.of<ThemeProvider>(
+                        context,
+                        listen: false,
+                      ).getCaloriesColor(context),
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -209,7 +262,15 @@ class MealCard extends StatelessWidget {
           content: Text(
             success ? 'Added to favorites!' : 'Failed to add to favorites',
           ),
-          backgroundColor: success ? Colors.green : Colors.red,
+          backgroundColor: success
+              ? Provider.of<ThemeProvider>(
+                  context,
+                  listen: false,
+                ).getSuccessColor(context)
+              : Provider.of<ThemeProvider>(
+                  context,
+                  listen: false,
+                ).getErrorColor(context),
         ),
       );
     }
@@ -230,7 +291,12 @@ class MealCard extends StatelessWidget {
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: TextButton.styleFrom(
+              foregroundColor: Provider.of<ThemeProvider>(
+                context,
+                listen: false,
+              ).getErrorColor(context),
+            ),
             child: const Text('Delete'),
           ),
         ],
@@ -245,7 +311,15 @@ class MealCard extends StatelessWidget {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(success ? 'Meal deleted' : 'Failed to delete meal'),
-            backgroundColor: success ? Colors.green : Colors.red,
+            backgroundColor: success
+                ? Provider.of<ThemeProvider>(
+                    context,
+                    listen: false,
+                  ).getSuccessColor(context)
+                : Provider.of<ThemeProvider>(
+                    context,
+                    listen: false,
+                  ).getErrorColor(context),
           ),
         );
       }

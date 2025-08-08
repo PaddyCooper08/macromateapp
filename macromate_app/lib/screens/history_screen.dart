@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../models/daily_summary.dart';
 import '../providers/macro_provider.dart';
+import '../providers/theme_provider.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -82,20 +83,30 @@ class _HistoryScreenState extends State<HistoryScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.history, size: 64, color: Colors.grey[400]),
+            Icon(
+              Icons.history,
+              size: 64,
+              color: Theme.of(
+                context,
+              ).colorScheme.onBackground.withOpacity(0.4),
+            ),
             const SizedBox(height: 16),
             Text(
               'No history data',
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(color: Colors.grey[600]),
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: Theme.of(
+                  context,
+                ).colorScheme.onBackground.withOpacity(0.6),
+              ),
             ),
             const SizedBox(height: 8),
             Text(
               'Start logging meals to see your history',
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(color: Colors.grey[500]),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(
+                  context,
+                ).colorScheme.onBackground.withOpacity(0.5),
+              ),
             ),
           ],
         ),
@@ -188,9 +199,22 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _buildLegendItem('Protein', Colors.red[400]!),
-                    _buildLegendItem('Carbs', Colors.blue[400]!),
-                    _buildLegendItem('Fats', Colors.green[400]!),
+                    _buildLegendItem(
+                      'Protein',
+                      Provider.of<ThemeProvider>(
+                        context,
+                      ).getProteinColor(context),
+                    ),
+                    _buildLegendItem(
+                      'Carbs',
+                      Provider.of<ThemeProvider>(
+                        context,
+                      ).getCarbsColor(context),
+                    ),
+                    _buildLegendItem(
+                      'Fats',
+                      Provider.of<ThemeProvider>(context).getFatsColor(context),
+                    ),
                   ],
                 ),
               ],
@@ -234,11 +258,277 @@ class _HistoryScreenState extends State<HistoryScreen> {
             final summary = summaries[index];
             return Padding(
               padding: const EdgeInsets.only(bottom: 12),
-              child: DailySummaryCard(summary: summary),
+              child: GestureDetector(
+                onTap: () => _openDayDetails(summary),
+                child: DailySummaryCard(summary: summary),
+              ),
             );
           },
         ),
       ],
+    );
+  }
+
+  Future<void> _openDayDetails(DailySummary summary) async {
+    final macroProvider = Provider.of<MacroProvider>(context, listen: false);
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
+    // Load meals for the selected day
+    await macroProvider.loadDayMacros(summary.date);
+
+    if (!mounted) return;
+
+    // Show bottom sheet with details
+    // ignore: use_build_context_synchronously
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: theme.scaffoldBackgroundColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.7,
+          minChildSize: 0.4,
+          maxChildSize: 0.95,
+          builder: (context, controller) {
+            return Consumer<MacroProvider>(
+              builder: (context, provider, _) {
+                final meals = provider.selectedDayMeals;
+                return Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              DateFormat(
+                                'EEEE, MMM d',
+                              ).format(DateTime.parse(summary.date)),
+                              style: theme.textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close),
+                            color: cs.onBackground,
+                            onPressed: () => Navigator.of(context).pop(),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      // Totals row
+                      Row(
+                        children: [
+                          _totalPill(
+                            'Protein',
+                            provider.selectedDayProtein,
+                            'g',
+                          ),
+                          const SizedBox(width: 8),
+                          _totalPill('Carbs', provider.selectedDayCarbs, 'g'),
+                          const SizedBox(width: 8),
+                          _totalPill('Fats', provider.selectedDayFats, 'g'),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 8,
+                          horizontal: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Provider.of<ThemeProvider>(
+                            context,
+                            listen: false,
+                          ).getCardBackgroundColor(context),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: Provider.of<ThemeProvider>(
+                              context,
+                              listen: false,
+                            ).getCardBorderColor(context),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.local_fire_department,
+                              color: Provider.of<ThemeProvider>(
+                                context,
+                                listen: false,
+                              ).getCaloriesColor(context),
+                              size: 16,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${provider.selectedDayCalories.toStringAsFixed(0)} kcal',
+                              style: TextStyle(
+                                color: Provider.of<ThemeProvider>(
+                                  context,
+                                  listen: false,
+                                ).getCaloriesColor(context),
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      if (meals.isEmpty)
+                        Expanded(
+                          child: Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.restaurant_menu,
+                                  size: 48,
+                                  color: cs.onBackground.withOpacity(0.4),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'No meals logged for this day',
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: cs.onBackground.withOpacity(0.6),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      else
+                        Expanded(
+                          child: ListView.builder(
+                            controller: controller,
+                            itemCount: meals.length,
+                            itemBuilder: (context, index) {
+                              final meal = meals[index];
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 12),
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Provider.of<ThemeProvider>(
+                                    context,
+                                    listen: false,
+                                  ).getCardBackgroundColor(context),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: Provider.of<ThemeProvider>(
+                                      context,
+                                      listen: false,
+                                    ).getCardBorderColor(context),
+                                  ),
+                                ),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            meal.foodItem,
+                                            style: theme.textTheme.titleMedium
+                                                ?.copyWith(
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            DateFormat(
+                                              'h:mm a',
+                                            ).format(meal.mealTime.toLocal()),
+                                            style: theme.textTheme.bodySmall
+                                                ?.copyWith(
+                                                  color: cs.onBackground
+                                                      .withOpacity(0.6),
+                                                ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.end,
+                                      children: [
+                                        Text(
+                                          '${meal.calories.toStringAsFixed(0)} kcal',
+                                          style: theme.textTheme.bodyMedium
+                                              ?.copyWith(
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'P ${meal.protein.toStringAsFixed(0)}g  C ${meal.carbs.toStringAsFixed(0)}g  F ${meal.fats.toStringAsFixed(0)}g',
+                                          style: theme.textTheme.bodySmall,
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+
+    macroProvider.clearSelectedDay();
+  }
+
+  Widget _totalPill(String label, double value, String unit) {
+    final color = Provider.of<ThemeProvider>(
+      context,
+      listen: false,
+    ).getAccentColor(context);
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: color.withOpacity(0.25)),
+        ),
+        child: Column(
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                color: color.withOpacity(0.8),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              '${value.toStringAsFixed(1)}$unit',
+              style: TextStyle(
+                fontSize: 14,
+                color: color,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -249,17 +539,35 @@ class _HistoryScreenState extends State<HistoryScreen> {
       return FlSpot(index.toDouble(), summary.totalCalories);
     }).toList();
 
+    // Calculate interval to prevent overlapping labels
+    final interval = _calculateInterval(summaries.length);
+
     return LineChartData(
-      gridData: const FlGridData(show: true),
+      gridData: FlGridData(
+        show: true,
+        drawVerticalLine: true,
+        verticalInterval: interval,
+        getDrawingHorizontalLine: (value) {
+          return FlLine(color: Colors.grey.withOpacity(0.3), strokeWidth: 1);
+        },
+        getDrawingVerticalLine: (value) {
+          return FlLine(color: Colors.grey.withOpacity(0.3), strokeWidth: 1);
+        },
+      ),
       titlesData: FlTitlesData(
         leftTitles: AxisTitles(
           sideTitles: SideTitles(
             showTitles: true,
-            reservedSize: 60,
+            reservedSize: 50,
+            interval: _calculateYAxisInterval(spots),
             getTitlesWidget: (value, meta) {
-              return Text(
-                value.toInt().toString(),
-                style: const TextStyle(fontSize: 10),
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Text(
+                  value.toInt().toString(),
+                  style: const TextStyle(fontSize: 10, color: Colors.grey),
+                  textAlign: TextAlign.right,
+                ),
               );
             },
           ),
@@ -267,12 +575,17 @@ class _HistoryScreenState extends State<HistoryScreen> {
         bottomTitles: AxisTitles(
           sideTitles: SideTitles(
             showTitles: true,
+            reservedSize: 40,
+            interval: interval,
             getTitlesWidget: (value, meta) {
               if (value.toInt() >= 0 && value.toInt() < summaries.length) {
                 final date = DateTime.parse(summaries[value.toInt()].date);
-                return Text(
-                  DateFormat('MM/dd').format(date),
-                  style: const TextStyle(fontSize: 12),
+                return Transform.rotate(
+                  angle: -0.5,
+                  child: Text(
+                    DateFormat('M/d').format(date),
+                    style: const TextStyle(fontSize: 10, color: Colors.grey),
+                  ),
                 );
               }
               return const Text('');
@@ -284,14 +597,35 @@ class _HistoryScreenState extends State<HistoryScreen> {
           sideTitles: SideTitles(showTitles: false),
         ),
       ),
-      borderData: FlBorderData(show: true),
+      borderData: FlBorderData(
+        show: true,
+        border: Border.all(color: Colors.grey.withOpacity(0.3)),
+      ),
       lineBarsData: [
         LineChartBarData(
           spots: spots,
           isCurved: true,
-          color: Colors.orange[500],
+          gradient: LinearGradient(
+            colors: Provider.of<ThemeProvider>(
+              context,
+              listen: false,
+            ).getCaloriesGradient(context),
+          ),
           barWidth: 3,
-          dotData: const FlDotData(show: true),
+          dotData: FlDotData(
+            show: true,
+            getDotPainter: (spot, percent, barData, index) {
+              return FlDotCirclePainter(
+                radius: 4,
+                color: Provider.of<ThemeProvider>(
+                  context,
+                  listen: false,
+                ).getCaloriesColor(context),
+                strokeWidth: 2,
+                strokeColor: Colors.white,
+              );
+            },
+          ),
         ),
       ],
     );
@@ -310,17 +644,39 @@ class _HistoryScreenState extends State<HistoryScreen> {
       return FlSpot(entry.key.toDouble(), entry.value.totalFats);
     }).toList();
 
+    // Calculate interval to prevent overlapping labels
+    final interval = _calculateInterval(summaries.length);
+
     return LineChartData(
-      gridData: const FlGridData(show: true),
+      gridData: FlGridData(
+        show: true,
+        drawVerticalLine: true,
+        verticalInterval: interval,
+        getDrawingHorizontalLine: (value) {
+          return FlLine(color: Colors.grey.withOpacity(0.3), strokeWidth: 1);
+        },
+        getDrawingVerticalLine: (value) {
+          return FlLine(color: Colors.grey.withOpacity(0.3), strokeWidth: 1);
+        },
+      ),
       titlesData: FlTitlesData(
         leftTitles: AxisTitles(
           sideTitles: SideTitles(
             showTitles: true,
-            reservedSize: 60,
+            reservedSize: 50,
+            interval: _calculateMacroYAxisInterval([
+              proteinSpots,
+              carbsSpots,
+              fatsSpots,
+            ]),
             getTitlesWidget: (value, meta) {
-              return Text(
-                value.toInt().toString(),
-                style: const TextStyle(fontSize: 10),
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Text(
+                  value.toInt().toString(),
+                  style: const TextStyle(fontSize: 10, color: Colors.grey),
+                  textAlign: TextAlign.right,
+                ),
               );
             },
           ),
@@ -328,12 +684,17 @@ class _HistoryScreenState extends State<HistoryScreen> {
         bottomTitles: AxisTitles(
           sideTitles: SideTitles(
             showTitles: true,
+            reservedSize: 40,
+            interval: interval,
             getTitlesWidget: (value, meta) {
               if (value.toInt() >= 0 && value.toInt() < summaries.length) {
                 final date = DateTime.parse(summaries[value.toInt()].date);
-                return Text(
-                  DateFormat('MM/dd').format(date),
-                  style: const TextStyle(fontSize: 12),
+                return Transform.rotate(
+                  angle: -0.5,
+                  child: Text(
+                    DateFormat('M/d').format(date),
+                    style: const TextStyle(fontSize: 10, color: Colors.grey),
+                  ),
                 );
               }
               return const Text('');
@@ -345,31 +706,92 @@ class _HistoryScreenState extends State<HistoryScreen> {
           sideTitles: SideTitles(showTitles: false),
         ),
       ),
-      borderData: FlBorderData(show: true),
+      borderData: FlBorderData(
+        show: true,
+        border: Border.all(color: Colors.grey.withOpacity(0.3)),
+      ),
       lineBarsData: [
         LineChartBarData(
           spots: proteinSpots,
           isCurved: true,
-          color: Colors.red[400],
+          gradient: LinearGradient(
+            colors: Provider.of<ThemeProvider>(
+              context,
+              listen: false,
+            ).getProteinGradient(context),
+          ),
           barWidth: 2,
           dotData: const FlDotData(show: false),
         ),
         LineChartBarData(
           spots: carbsSpots,
           isCurved: true,
-          color: Colors.blue[400],
+          gradient: LinearGradient(
+            colors: Provider.of<ThemeProvider>(
+              context,
+              listen: false,
+            ).getCarbsGradient(context),
+          ),
           barWidth: 2,
           dotData: const FlDotData(show: false),
         ),
         LineChartBarData(
           spots: fatsSpots,
           isCurved: true,
-          color: Colors.green[400],
+          gradient: LinearGradient(
+            colors: Provider.of<ThemeProvider>(
+              context,
+              listen: false,
+            ).getFatsGradient(context),
+          ),
           barWidth: 2,
           dotData: const FlDotData(show: false),
         ),
       ],
     );
+  }
+
+  // Helper methods for calculating intervals to prevent overlapping labels
+  double _calculateInterval(int dataLength) {
+    if (dataLength <= 7) return 1;
+    if (dataLength <= 14) return 2;
+    if (dataLength <= 30) return 5;
+    return (dataLength / 6).ceil().toDouble();
+  }
+
+  double? _calculateYAxisInterval(List<FlSpot> spots) {
+    if (spots.isEmpty) return null;
+
+    final maxValue = spots
+        .map((spot) => spot.y)
+        .reduce((a, b) => a > b ? a : b);
+    final minValue = spots
+        .map((spot) => spot.y)
+        .reduce((a, b) => a < b ? a : b);
+    final range = maxValue - minValue;
+
+    if (range <= 100) return 20;
+    if (range <= 500) return 50;
+    if (range <= 1000) return 100;
+    return (range / 5).ceil().toDouble();
+  }
+
+  double? _calculateMacroYAxisInterval(List<List<FlSpot>> allSpots) {
+    if (allSpots.isEmpty) return null;
+
+    final allValues = allSpots
+        .expand((spots) => spots.map((spot) => spot.y))
+        .toList();
+    if (allValues.isEmpty) return null;
+
+    final maxValue = allValues.reduce((a, b) => a > b ? a : b);
+    final minValue = allValues.reduce((a, b) => a < b ? a : b);
+    final range = maxValue - minValue;
+
+    if (range <= 50) return 10;
+    if (range <= 100) return 20;
+    if (range <= 200) return 25;
+    return (range / 5).ceil().toDouble();
   }
 }
 
@@ -407,7 +829,10 @@ class DailySummaryCard extends StatelessWidget {
                     label: 'Protein',
                     value: summary.totalProtein,
                     unit: 'g',
-                    color: Colors.red[400]!,
+                    color: Provider.of<ThemeProvider>(
+                      context,
+                      listen: false,
+                    ).getProteinColor(context),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -416,7 +841,10 @@ class DailySummaryCard extends StatelessWidget {
                     label: 'Carbs',
                     value: summary.totalCarbs,
                     unit: 'g',
-                    color: Colors.blue[400]!,
+                    color: Provider.of<ThemeProvider>(
+                      context,
+                      listen: false,
+                    ).getCarbsColor(context),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -425,7 +853,10 @@ class DailySummaryCard extends StatelessWidget {
                     label: 'Fats',
                     value: summary.totalFats,
                     unit: 'g',
-                    color: Colors.green[400]!,
+                    color: Provider.of<ThemeProvider>(
+                      context,
+                      listen: false,
+                    ).getFatsColor(context),
                   ),
                 ),
               ],
@@ -437,23 +868,37 @@ class DailySummaryCard extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
               decoration: BoxDecoration(
-                color: Colors.orange[50],
+                color: Provider.of<ThemeProvider>(
+                  context,
+                  listen: false,
+                ).getCardBackgroundColor(context),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.orange[200]!),
+                border: Border.all(
+                  color: Provider.of<ThemeProvider>(
+                    context,
+                    listen: false,
+                  ).getCardBorderColor(context),
+                ),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
                     Icons.local_fire_department,
-                    color: Colors.orange[600],
+                    color: Provider.of<ThemeProvider>(
+                      context,
+                      listen: false,
+                    ).getCaloriesColor(context),
                     size: 16,
                   ),
                   const SizedBox(width: 4),
                   Text(
                     '${summary.totalCalories.toStringAsFixed(0)} kcal',
                     style: TextStyle(
-                      color: Colors.orange[800],
+                      color: Provider.of<ThemeProvider>(
+                        context,
+                        listen: false,
+                      ).getCaloriesColor(context),
                       fontWeight: FontWeight.bold,
                     ),
                   ),

@@ -15,8 +15,7 @@ class AddMealFab extends StatelessWidget {
           builder: (context) => const AddMealBottomSheet(),
         );
       },
-      backgroundColor: Colors.blue[500],
-      foregroundColor: Colors.white,
+      // Colors come from floatingActionButtonTheme in ThemeProvider
       child: const Icon(Icons.add),
     );
   }

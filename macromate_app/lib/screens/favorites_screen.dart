@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/favorite_food.dart';
 import '../providers/macro_provider.dart';
+import '../providers/theme_provider.dart';
 
 class FavoritesScreen extends StatefulWidget {
   const FavoritesScreen({super.key});
@@ -32,20 +33,30 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.favorite_border, size: 64, color: Colors.grey[400]),
+                Icon(
+                  Icons.favorite_border,
+                  size: 64,
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onBackground.withOpacity(0.4),
+                ),
                 const SizedBox(height: 16),
                 Text(
                   'No favorite foods yet',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleMedium?.copyWith(color: Colors.grey[600]),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onBackground.withOpacity(0.6),
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   'Add meals to favorites from the Today tab',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyMedium?.copyWith(color: Colors.grey[500]),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onBackground.withOpacity(0.5),
+                  ),
                   textAlign: TextAlign.center,
                 ),
               ],
@@ -106,14 +117,20 @@ class FavoriteCard extends StatelessWidget {
                           Icon(
                             Icons.favorite,
                             size: 16,
-                            color: Colors.red[400],
+                            color: Provider.of<ThemeProvider>(
+                              context,
+                              listen: false,
+                            ).getAccentColor(context),
                           ),
                           const SizedBox(width: 4),
                           Text(
                             'Favorite',
                             style: Theme.of(context).textTheme.bodySmall
                                 ?.copyWith(
-                                  color: Colors.red[400],
+                                  color: Provider.of<ThemeProvider>(
+                                    context,
+                                    listen: false,
+                                  ).getAccentColor(context),
                                   fontWeight: FontWeight.w500,
                                 ),
                           ),
@@ -134,7 +151,10 @@ class FavoriteCard extends StatelessWidget {
                     label: 'Protein',
                     value: favorite.protein,
                     unit: 'g',
-                    color: Colors.red[400]!,
+                    color: Provider.of<ThemeProvider>(
+                      context,
+                      listen: false,
+                    ).getProteinColor(context),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -143,7 +163,10 @@ class FavoriteCard extends StatelessWidget {
                     label: 'Carbs',
                     value: favorite.carbs,
                     unit: 'g',
-                    color: Colors.blue[400]!,
+                    color: Provider.of<ThemeProvider>(
+                      context,
+                      listen: false,
+                    ).getCarbsColor(context),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -152,7 +175,10 @@ class FavoriteCard extends StatelessWidget {
                     label: 'Fats',
                     value: favorite.fats,
                     unit: 'g',
-                    color: Colors.green[400]!,
+                    color: Provider.of<ThemeProvider>(
+                      context,
+                      listen: false,
+                    ).getFatsColor(context),
                   ),
                 ),
               ],
@@ -164,23 +190,37 @@ class FavoriteCard extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
               decoration: BoxDecoration(
-                color: Colors.orange[50],
+                color: Provider.of<ThemeProvider>(
+                  context,
+                  listen: false,
+                ).getCardBackgroundColor(context),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.orange[200]!),
+                border: Border.all(
+                  color: Provider.of<ThemeProvider>(
+                    context,
+                    listen: false,
+                  ).getCardBorderColor(context),
+                ),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
                     Icons.local_fire_department,
-                    color: Colors.orange[600],
+                    color: Provider.of<ThemeProvider>(
+                      context,
+                      listen: false,
+                    ).getCaloriesColor(context),
                     size: 16,
                   ),
                   const SizedBox(width: 4),
                   Text(
                     '${favorite.calories.toStringAsFixed(0)} kcal',
                     style: TextStyle(
-                      color: Colors.orange[800],
+                      color: Provider.of<ThemeProvider>(
+                        context,
+                        listen: false,
+                      ).getCaloriesColor(context),
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -198,13 +238,51 @@ class FavoriteCard extends StatelessWidget {
                     icon: Icon(Icons.add_circle_outline, size: 20),
                     label: Text('Add to Today'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue[50],
-                      foregroundColor: Colors.blue[700],
+                      backgroundColor: Provider.of<ThemeProvider>(
+                        context,
+                        listen: false,
+                      ).getButtonBackgroundColor(context),
+                      foregroundColor: Provider.of<ThemeProvider>(
+                        context,
+                        listen: false,
+                      ).getAccentColor(context),
                       elevation: 0,
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
-                        side: BorderSide(color: Colors.blue[200]!),
+                        side: BorderSide(
+                          color: Provider.of<ThemeProvider>(
+                            context,
+                            listen: false,
+                          ).getCardBorderColor(context),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  onPressed: () => _editFavorite(context),
+                  icon: Icon(
+                    Icons.edit_outlined,
+                    color: Provider.of<ThemeProvider>(
+                      context,
+                      listen: false,
+                    ).getAccentColor(context),
+                  ),
+                  tooltip: 'Edit',
+                  style: IconButton.styleFrom(
+                    backgroundColor: Provider.of<ThemeProvider>(
+                      context,
+                      listen: false,
+                    ).getButtonBackgroundColor(context),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      side: BorderSide(
+                        color: Provider.of<ThemeProvider>(
+                          context,
+                          listen: false,
+                        ).getCardBorderColor(context),
                       ),
                     ),
                   ),
@@ -212,13 +290,27 @@ class FavoriteCard extends StatelessWidget {
                 const SizedBox(width: 8),
                 IconButton(
                   onPressed: () => _deleteFavorite(context),
-                  icon: Icon(Icons.delete_outline, color: Colors.red[600]),
+                  icon: Icon(
+                    Icons.delete_outline,
+                    color: Provider.of<ThemeProvider>(
+                      context,
+                      listen: false,
+                    ).getErrorColor(context),
+                  ),
                   tooltip: 'Delete',
                   style: IconButton.styleFrom(
-                    backgroundColor: Colors.red[50],
+                    backgroundColor: Provider.of<ThemeProvider>(
+                      context,
+                      listen: false,
+                    ).getButtonBackgroundColor(context),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
-                      side: BorderSide(color: Colors.red[200]!),
+                      side: BorderSide(
+                        color: Provider.of<ThemeProvider>(
+                          context,
+                          listen: false,
+                        ).getCardBorderColor(context),
+                      ),
                     ),
                   ),
                 ),
@@ -240,7 +332,15 @@ class FavoriteCard extends StatelessWidget {
           content: Text(
             success ? 'Added to today\'s meals!' : 'Failed to add to meals',
           ),
-          backgroundColor: success ? Colors.green : Colors.red,
+          backgroundColor: success
+              ? Provider.of<ThemeProvider>(
+                  context,
+                  listen: false,
+                ).getSuccessColor(context)
+              : Provider.of<ThemeProvider>(
+                  context,
+                  listen: false,
+                ).getErrorColor(context),
         ),
       );
     }
@@ -261,7 +361,12 @@ class FavoriteCard extends StatelessWidget {
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: TextButton.styleFrom(
+              foregroundColor: Provider.of<ThemeProvider>(
+                context,
+                listen: false,
+              ).getErrorColor(context),
+            ),
             child: const Text('Delete'),
           ),
         ],
@@ -278,7 +383,76 @@ class FavoriteCard extends StatelessWidget {
             content: Text(
               success ? 'Favorite deleted' : 'Failed to delete favorite',
             ),
-            backgroundColor: success ? Colors.green : Colors.red,
+            backgroundColor: success
+                ? Provider.of<ThemeProvider>(
+                    context,
+                    listen: false,
+                  ).getSuccessColor(context)
+                : Provider.of<ThemeProvider>(
+                    context,
+                    listen: false,
+                  ).getErrorColor(context),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _editFavorite(BuildContext context) async {
+    final controller = TextEditingController(text: favorite.foodItem);
+
+    final newName = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit Favorite'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            labelText: 'Food name',
+            border: OutlineInputBorder(),
+          ),
+          autofocus: true,
+          textCapitalization: TextCapitalization.sentences,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              final trimmed = controller.text.trim();
+              if (trimmed.isNotEmpty && trimmed != favorite.foodItem) {
+                Navigator.of(context).pop(trimmed);
+              } else {
+                Navigator.of(context).pop();
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+
+    if (newName != null && context.mounted) {
+      final macroProvider = Provider.of<MacroProvider>(context, listen: false);
+      final success = await macroProvider.editFavorite(favorite.id, newName);
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              success ? 'Favorite updated' : 'Failed to update favorite',
+            ),
+            backgroundColor: success
+                ? Provider.of<ThemeProvider>(
+                    context,
+                    listen: false,
+                  ).getSuccessColor(context)
+                : Provider.of<ThemeProvider>(
+                    context,
+                    listen: false,
+                  ).getErrorColor(context),
           ),
         );
       }
