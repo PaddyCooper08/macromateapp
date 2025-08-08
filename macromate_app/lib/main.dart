@@ -4,8 +4,18 @@ import 'providers/macro_provider.dart';
 import 'providers/theme_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  const supabaseUrl = String.fromEnvironment('SUPABASE_URL', defaultValue: '');
+  const supabaseAnonKey = String.fromEnvironment(
+    'SUPABASE_ANON_KEY',
+    defaultValue: '',
+  );
+  if (supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty) {
+    await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
+  }
   runApp(const MyApp());
 }
 

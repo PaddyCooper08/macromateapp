@@ -3,6 +3,9 @@ import 'package:provider/provider.dart';
 import '../providers/macro_provider.dart';
 import '../providers/theme_provider.dart';
 import 'home_screen.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../services/user_storage_service.dart';
+import '../services/api_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -12,21 +15,140 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
   final _telegramIdController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  bool _authLoading = false;
+  bool _obscure = true;
 
   @override
   void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
     _telegramIdController.dispose();
     super.dispose();
   }
 
-  Future<void> _login() async {
+  Future<void> _onSignedIn(User user) async {
+    // If user had a Telegram ID locally, migrate data
+    final existingId = await UserStorageService.getUserId();
+    if (existingId != null &&
+        existingId != user.id &&
+        RegExp(r'^\d+$').hasMatch(existingId)) {
+      try {
+        await ApiService.migrateTelegramToSupabase(
+          telegramId: existingId,
+          supabaseUserId: user.id,
+        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Data migrated from Telegram')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Migration failed (continuing): $e')),
+          );
+        }
+      }
+    }
+
+    final macroProvider = Provider.of<MacroProvider>(context, listen: false);
+    await macroProvider.login(user.id, source: 'supabase');
+    if (mounted) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+      );
+    }
+  }
+
+  Future<void> _signInWithEmail() async {
+    if (!_validateEmailPassword()) return;
+    setState(() => _authLoading = true);
+    try {
+      final supabase = Supabase.instance.client;
+      await supabase.auth.signInWithPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+      final user = supabase.auth.currentUser;
+      if (user == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Sign-in failed. Please try again.')),
+          );
+        }
+        return;
+      }
+      await _onSignedIn(user);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Email sign-in failed: $e')));
+    } finally {
+      if (mounted) setState(() => _authLoading = false);
+    }
+  }
+
+  Future<void> _signUpWithEmail() async {
+    if (!_validateEmailPassword()) return;
+    setState(() => _authLoading = true);
+    try {
+      final supabase = Supabase.instance.client;
+      final response = await supabase.auth.signUp(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+      final user = response.user ?? supabase.auth.currentUser;
+      if (user == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Check your email to confirm your registration.'),
+            ),
+          );
+        }
+        return;
+      }
+      await _onSignedIn(user);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Sign-up failed: $e')));
+    } finally {
+      if (mounted) setState(() => _authLoading = false);
+    }
+  }
+
+  bool _validateEmailPassword() {
+    final email = _emailController.text.trim();
+    final pass = _passwordController.text;
+    if (email.isEmpty || !email.contains('@')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter a valid email address')),
+      );
+      return false;
+    }
+    if (pass.length < 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Password must be at least 6 characters')),
+      );
+      return false;
+    }
+    return true;
+  }
+
+  Future<void> _loginTelegram() async {
     if (!_formKey.currentState!.validate()) return;
 
     final macroProvider = Provider.of<MacroProvider>(context, listen: false);
     final success = await macroProvider.login(
       _telegramIdController.text.trim(),
+      source: 'telegram',
     );
 
     if (success && mounted) {
@@ -39,7 +161,6 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Use themed background so dark mode stays black/white only
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Center(
@@ -88,11 +209,103 @@ class _LoginScreenState extends State<LoginScreen> {
                     context,
                   ).textTheme.bodyLarge?.copyWith(color: Colors.grey[600]),
                 ),
-                const SizedBox(height: 48),
+                const SizedBox(height: 32),
 
-                // Login Form
+                // Email/Password Auth
                 Card(
                   elevation: 4,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          'Sign in with Email',
+                          style: Theme.of(context).textTheme.headlineSmall
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 24),
+                        TextField(
+                          controller: _emailController,
+                          keyboardType: TextInputType.emailAddress,
+                          decoration: InputDecoration(
+                            labelText: 'Email',
+                            prefixIcon: const Icon(Icons.email_outlined),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        TextField(
+                          controller: _passwordController,
+                          obscureText: _obscure,
+                          decoration: InputDecoration(
+                            labelText: 'Password',
+                            prefixIcon: const Icon(Icons.lock_outline),
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscure
+                                    ? Icons.visibility
+                                    : Icons.visibility_off,
+                              ),
+                              onPressed: () =>
+                                  setState(() => _obscure = !_obscure),
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed: _authLoading
+                                    ? null
+                                    : _signInWithEmail,
+                                child: _authLoading
+                                    ? const SizedBox(
+                                        height: 20,
+                                        width: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : const Text(
+                                        'Sign In',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: _authLoading
+                                    ? null
+                                    : _signUpWithEmail,
+                                child: const Text('Sign Up'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Telegram fallback / migration
+                Card(
+                  elevation: 2,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),
@@ -104,14 +317,11 @@ class _LoginScreenState extends State<LoginScreen> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           Text(
-                            'Login',
-                            style: Theme.of(context).textTheme.headlineSmall
-                                ?.copyWith(fontWeight: FontWeight.bold),
+                            'Or continue with Telegram ID',
+                            style: Theme.of(context).textTheme.titleMedium,
                             textAlign: TextAlign.center,
                           ),
-                          const SizedBox(height: 24),
-
-                          // Telegram ID Field
+                          const SizedBox(height: 16),
                           TextFormField(
                             controller: _telegramIdController,
                             decoration: InputDecoration(
@@ -136,16 +346,13 @@ class _LoginScreenState extends State<LoginScreen> {
                               return null;
                             },
                           ),
-                          const SizedBox(height: 24),
-
-                          // Login Button
+                          const SizedBox(height: 16),
                           Consumer<MacroProvider>(
                             builder: (context, macroProvider, child) {
-                              return ElevatedButton(
+                              return OutlinedButton(
                                 onPressed: macroProvider.isLoading
                                     ? null
-                                    : _login,
-                                // Colors come from elevatedButtonTheme
+                                    : _loginTelegram,
                                 child: macroProvider.isLoading
                                     ? const SizedBox(
                                         height: 20,
@@ -154,135 +361,12 @@ class _LoginScreenState extends State<LoginScreen> {
                                           strokeWidth: 2,
                                         ),
                                       )
-                                    : const Text(
-                                        'Login',
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
+                                    : const Text('Continue'),
                               );
-                            },
-                          ),
-
-                          // Error Message
-                          Consumer<MacroProvider>(
-                            builder: (context, macroProvider, child) {
-                              if (macroProvider.error != null) {
-                                return Padding(
-                                  padding: const EdgeInsets.only(top: 16),
-                                  child: Container(
-                                    padding: const EdgeInsets.all(12),
-                                    decoration: BoxDecoration(
-                                      color:
-                                          Provider.of<ThemeProvider>(
-                                            context,
-                                          ).isDarkMode
-                                          ? Colors.white10
-                                          : Colors.red[50],
-                                      borderRadius: BorderRadius.circular(8),
-                                      border: Border.all(
-                                        color:
-                                            Provider.of<ThemeProvider>(
-                                              context,
-                                            ).isDarkMode
-                                            ? Colors.white24
-                                            : Colors.red[200]!,
-                                      ),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Icon(
-                                          Icons.error_outline,
-                                          color:
-                                              Provider.of<ThemeProvider>(
-                                                context,
-                                              ).isDarkMode
-                                              ? Colors.white
-                                              : Colors.red[700],
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Expanded(
-                                          child: Text(
-                                            macroProvider.error!,
-                                            style: TextStyle(
-                                              color:
-                                                  Provider.of<ThemeProvider>(
-                                                    context,
-                                                  ).isDarkMode
-                                                  ? Colors.white
-                                                  : Colors.red[700],
-                                            ),
-                                          ),
-                                        ),
-                                        IconButton(
-                                          onPressed: macroProvider.clearError,
-                                          icon: Icon(
-                                            Icons.close,
-                                            color:
-                                                Provider.of<ThemeProvider>(
-                                                  context,
-                                                ).isDarkMode
-                                                ? Colors.white
-                                                : Colors.red[700],
-                                          ),
-                                          iconSize: 20,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              }
-                              return const SizedBox.shrink();
                             },
                           ),
                         ],
                       ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                // Info Card
-                Card(
-                  color: Provider.of<ThemeProvider>(context).isDarkMode
-                      ? Colors.black
-                      : Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(
-                      color: Provider.of<ThemeProvider>(context).isDarkMode
-                          ? Colors.white24
-                          : Colors.black12,
-                    ),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      children: [
-                        Icon(
-                          Icons.info_outline,
-                          color: Provider.of<ThemeProvider>(context).isDarkMode
-                              ? Colors.white
-                              : Colors.black,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'How to find your Telegram ID:',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color:
-                                Provider.of<ThemeProvider>(context).isDarkMode
-                                ? Colors.white
-                                : Colors.black,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          '1. Open Telegram\n2. Search for @userinfobot\n3. Start a chat and it will show your ID',
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
                     ),
                   ),
                 ),

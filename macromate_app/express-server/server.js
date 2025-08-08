@@ -17,6 +17,7 @@ import {
   updateFavoriteItem,
 } from "./supabaseClient.js";
 import { calculateMacros, testService, calculateImageMacros } from "./geminiService.js";
+import { createClient } from '@supabase/supabase-js';
 
 // Validate required environment variables
 if (!process.env.GEMINI_API_KEY) {
@@ -774,6 +775,37 @@ app.put('/api/favorites/:userId/:favoriteId', async (req, res) => {
       error: 'Failed to update favorite',
       message: error.message
     });
+  }
+});
+
+// Migration endpoint: move data from Telegram ID to Supabase auth user.id
+app.post('/api/migrate-user', async (req, res) => {
+  try {
+    const { telegramId, supabaseUserId } = req.body;
+    if (!telegramId || !supabaseUserId) {
+      return res.status(400).json({ success: false, error: 'telegramId and supabaseUserId are required' });
+    }
+
+    const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+
+    // Update macro_logs
+    const { error: macroErr } = await supabase
+      .from('macro_logs')
+      .update({ user_id: supabaseUserId })
+      .eq('user_id', telegramId.toString());
+    if (macroErr) throw macroErr;
+
+    // Update favorite_foods
+    const { error: favErr } = await supabase
+      .from('favorite_foods')
+      .update({ user_id: supabaseUserId })
+      .eq('user_id', telegramId.toString());
+    if (favErr) throw favErr;
+
+    res.json({ success: true, message: 'Migration completed' });
+  } catch (error) {
+    console.error('Migration error:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 

@@ -4,6 +4,7 @@ import '../models/favorite_food.dart';
 import '../models/daily_summary.dart';
 import '../services/api_service.dart';
 import '../services/user_storage_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class MacroProvider with ChangeNotifier {
   String? _userId;
@@ -47,9 +48,30 @@ class MacroProvider with ChangeNotifier {
 
   bool get isLoggedIn => _userId != null;
 
+  bool get _supabaseReady {
+    try {
+      // Accessing instance throws if not initialized
+      // ignore: unnecessary_statements
+      Supabase.instance;
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   // Initialize the provider
   Future<void> initialize() async {
     _userId = await UserStorageService.getUserId();
+
+    // If not found in local storage, try Supabase session only if initialized
+    if (_userId == null && _supabaseReady) {
+      final supabaseUser = Supabase.instance.client.auth.currentUser;
+      if (supabaseUser != null) {
+        _userId = supabaseUser.id;
+        await UserStorageService.saveUserId(_userId!, source: 'supabase');
+      }
+    }
+
     if (_userId != null) {
       await loadTodaysMacros();
       await loadFavorites();
@@ -58,8 +80,8 @@ class MacroProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // Login with Telegram ID
-  Future<bool> login(String telegramId) async {
+  // Login with user ID (Telegram numeric or Supabase UUID)
+  Future<bool> login(String userId, {String? source}) async {
     try {
       _setLoading(true);
       _setError(null);
@@ -72,9 +94,9 @@ class MacroProvider with ChangeNotifier {
         );
       }
 
-      // Save user ID
-      await UserStorageService.saveUserId(telegramId);
-      _userId = telegramId;
+      // Save user ID (can be Telegram ID or Supabase auth user.id)
+      await UserStorageService.saveUserId(userId, source: source);
+      _userId = userId;
 
       // Load user data
       await loadTodaysMacros();
@@ -94,6 +116,9 @@ class MacroProvider with ChangeNotifier {
 
   // Logout
   Future<void> logout() async {
+    try {
+      await Supabase.instance.client.auth.signOut();
+    } catch (_) {}
     await UserStorageService.clearUserData();
     _userId = null;
     _todaysMeals.clear();

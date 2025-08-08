@@ -296,4 +296,22 @@ class ApiService {
       throw Exception(response['error'] ?? 'Failed to edit favorite');
     }
   }
+
+  // Link/migrate Telegram data to Supabase user
+  static Future<bool> migrateTelegramToSupabase({
+    required String telegramId,
+    required String supabaseUserId,
+  }) async {
+    final response = await _makeRequest(
+      '/api/migrate-user',
+      'POST',
+      body: {'telegramId': telegramId, 'supabaseUserId': supabaseUserId},
+    );
+
+    if (response['success'] == true) {
+      return true;
+    } else {
+      throw Exception(response['error'] ?? 'Migration failed');
+    }
+  }
 }
