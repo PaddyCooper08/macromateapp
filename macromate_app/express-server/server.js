@@ -937,49 +937,6 @@ app.post('/api/migrate-user', async (req, res) => {
   }
 });
 
-// Re-log (duplicate) a past macro entry into today
-app.post('/api/relog-macro', async (req, res) => {
-  try {
-    const { userId, foodItem, protein, carbs, fats, calories } = req.body;
-    if (!userId || !foodItem || protein == null || carbs == null || fats == null || calories == null) {
-      return res.status(400).json({ success: false, error: 'Missing required fields' });
-    }
-
-    const now = new Date();
-    const date = now.toISOString().split('T')[0];
-    const mealTime = now.toISOString();
-
-    const savedData = await saveMacrosToDb(
-      userId,
-      date,
-      mealTime,
-      String(foodItem),
-      parseFloat(protein),
-      parseFloat(carbs),
-      parseFloat(fats),
-      parseFloat(calories)
-    );
-
-    res.json({
-      success: true,
-      data: {
-        id: savedData.id,
-        foodItem: savedData.food_item,
-        protein: parseFloat(savedData.protein_g),
-        carbs: parseFloat(savedData.carbs_g),
-        fats: parseFloat(savedData.fats_g),
-        calories: parseFloat(savedData.calories),
-        date: savedData.log_date,
-        mealTime: savedData.meal_time
-      },
-      message: 'Meal added to today'
-    });
-  } catch (error) {
-    console.error('Error re-logging macro:', error);
-    res.status(500).json({ success: false, error: 'Failed to re-log macro', message: error.message });
-  }
-});
-
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
