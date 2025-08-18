@@ -134,6 +134,31 @@ class ApiService {
     }
   }
 
+  // Calculate macros from barcode
+  static Future<MacroEntry> calculateBarcodeMacros(
+    String userId,
+    String barcode,
+    String? weight,
+  ) async {
+    final response = await _makeRequest(
+      '/api/barcode-macros',
+      'POST',
+      body: {
+        'userId': userId,
+        'barcode': barcode,
+        if (weight != null && weight.isNotEmpty) 'weight': weight,
+      },
+    );
+
+    if (response['success'] == true) {
+      return MacroEntry.fromJson(response['data']);
+    } else {
+      throw Exception(
+        response['error'] ?? 'Failed to calculate barcode macros',
+      );
+    }
+  }
+
   // Get today's macros
   static Future<Map<String, dynamic>> getTodayMacros(String userId) async {
     final response = await _makeRequest('/api/today-macros/$userId', 'GET');

@@ -328,6 +328,134 @@ Now analyze the image with weight: "${weight || ''}"`;
   }
 });
 
+// Calculate macros from barcode (Open Food Facts)
+app.post('/api/barcode-macros', async (req, res) => {
+  try {
+    const { barcode, userId, weight } = req.body;
+
+    if (!barcode || !userId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: barcode and userId'
+      });
+    }
+
+    const trimmedBarcode = String(barcode).trim();
+    if (!/^\d{6,14}$/.test(trimmedBarcode)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid barcode format'
+      });
+    }
+
+    // Normalise weight (extract number of grams) default 100g
+    let weightGrams = 100;
+    if (weight && typeof weight === 'string') {
+      const match = weight.replace(',', '.').match(/([0-9]*\.?[0-9]+)/);
+      if (match) {
+        const val = parseFloat(match[1]);
+        if (!isNaN(val) && val > 0) weightGrams = val;
+      }
+    } else if (typeof weight === 'number' && weight > 0) {
+      weightGrams = weight;
+    }
+
+    const url = `https://world.openfoodfacts.org/api/v2/product/${trimmedBarcode}.json?cc=gb&lc=en`;
+
+    let response;
+    try {
+      response = await fetch(url, {
+        headers: {
+          'User-Agent': 'MacroMateApp/1.0',
+          'Accept': 'application/json'
+        }
+      });
+    } catch (err) {
+      return res.status(502).json({ success: false, error: 'Failed to reach Open Food Facts API' });
+    }
+
+    if (!response.ok) {
+      return res.status(502).json({ success: false, error: 'Open Food Facts API error' });
+    }
+    const data = await response.json();
+
+    if (data.status !== 1 || !data.product) {
+      return res.status(404).json({ success: false, error: 'Product not found' });
+    }
+
+    const product = data.product;
+    const nutriments = product.nutriments || {};
+
+    // Prefer *_100g entries (already per 100g). Fallback to *_serving if 100g missing and serving size ~100g assumption.
+    const protein100 = parseFloat(nutriments.proteins_100g ?? nutriments.proteins_serving ?? 0) || 0;
+    const carbs100 = parseFloat(nutriments.carbohydrates_100g ?? nutriments.carbohydrates_serving ?? 0) || 0;
+    const fats100 = parseFloat(nutriments.fat_100g ?? nutriments.fat_serving ?? 0) || 0;
+
+    // Energy may be in kcal or only kJ
+    let calories100 = parseFloat(
+      nutriments['energy-kcal_100g'] ?? nutriments['energy-kcal_serving'] ?? nutriments.energy_kcal ?? 0
+    );
+    if (!calories100 || calories100 === 0) {
+      const kj = parseFloat(
+        nutriments['energy-kj_100g'] ?? nutriments['energy-kj_serving'] ?? nutriments.energy_kj ?? 0
+      );
+      if (kj && kj > 0) calories100 = kj / 4.184;
+    }
+
+    const scale = weightGrams / 100.0;
+    const protein = parseFloat((protein100 * scale).toFixed(1));
+    const carbs = parseFloat((carbs100 * scale).toFixed(1));
+    const fats = parseFloat((fats100 * scale).toFixed(1));
+    const calories = parseFloat((calories100 * scale).toFixed(0));
+
+    // Reject if all zero (insufficient data)
+    if (protein === 0 && carbs === 0 && fats === 0 && calories === 0) {
+      return res.status(422).json({
+        success: false,
+        error: 'Insufficient nutrient data for this product'
+      });
+    }
+
+    const now = new Date();
+    const date = now.toISOString().split('T')[0];
+    const mealTime = now.toISOString();
+
+    const nameParts = [
+      product.brand_owner || product.brands,
+      product.product_name || product.generic_name
+    ].filter(Boolean);
+    const foodName = nameParts.join(' - ') || `Barcode ${trimmedBarcode}`;
+
+    const savedData = await saveMacrosToDb(
+      userId,
+      date,
+      mealTime,
+      foodName,
+      protein,
+      carbs,
+      fats,
+      calories
+    );
+
+    res.json({
+      success: true,
+      data: {
+        id: savedData.id,
+        foodItem: foodName,
+        protein,
+        carbs,
+        fats,
+        calories,
+        date,
+        mealTime
+      }
+    });
+  } catch (error) {
+    console.error('Error processing barcode macros:', error);
+    res.status(500).json({ success: false, error: 'Failed to process barcode', message: error.message });
+  }
+});
+
 // Get today's macros for a user
 app.get('/api/today-macros/:userId', async (req, res) => {
   try {

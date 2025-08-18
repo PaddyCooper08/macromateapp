@@ -212,6 +212,32 @@ class MacroProvider with ChangeNotifier {
     }
   }
 
+  // Add macro entry from barcode
+  Future<bool> addMacroEntryFromBarcode(String barcode, String? weight) async {
+    if (_userId == null) return false;
+    try {
+      _setLoading(true);
+      _setError(null);
+
+      final macroEntry = await ApiService.calculateBarcodeMacros(
+        _userId!,
+        barcode,
+        weight,
+      );
+      _todaysMeals.add(macroEntry);
+      _updateTotals();
+
+      _setLoading(false);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _setError(e.toString());
+      _setLoading(false);
+      notifyListeners();
+      return false;
+    }
+  }
+
   // Delete macro entry
   Future<bool> deleteMacroEntry(String entryId) async {
     if (_userId == null) return false;
