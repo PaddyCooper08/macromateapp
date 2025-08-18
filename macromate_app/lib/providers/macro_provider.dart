@@ -425,6 +425,26 @@ class MacroProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  // Relog a meal from a past day
+  Future<bool> relogMeal(MacroEntry entry) async {
+    if (_userId == null) return false;
+    try {
+      _setLoading(true);
+      _setError(null);
+      final newEntry = await ApiService.relogMacro(_userId!, entry);
+      _todaysMeals.add(newEntry);
+      _updateTotals();
+      _setLoading(false);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _setError(e.toString());
+      _setLoading(false);
+      notifyListeners();
+      return false;
+    }
+  }
+
   // Helper methods
   void _setLoading(bool loading) {
     _isLoading = loading;

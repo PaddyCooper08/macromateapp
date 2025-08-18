@@ -326,15 +326,23 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       // Totals row
                       Row(
                         children: [
-                          _totalPill(
-                            'Protein',
-                            provider.selectedDayProtein,
-                            'g',
+                          _TotalPill(
+                            label: 'Protein',
+                            value: provider.selectedDayProtein,
+                            unit: 'g',
                           ),
                           const SizedBox(width: 8),
-                          _totalPill('Carbs', provider.selectedDayCarbs, 'g'),
+                          _TotalPill(
+                            label: 'Carbs',
+                            value: provider.selectedDayCarbs,
+                            unit: 'g',
+                          ),
                           const SizedBox(width: 8),
-                          _totalPill('Fats', provider.selectedDayFats, 'g'),
+                          _TotalPill(
+                            label: 'Fats',
+                            value: provider.selectedDayFats,
+                            unit: 'g',
+                          ),
                         ],
                       ),
                       const SizedBox(height: 8),
@@ -473,6 +481,58 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                           'P ${meal.protein.toStringAsFixed(0)}g  C ${meal.carbs.toStringAsFixed(0)}g  F ${meal.fats.toStringAsFixed(0)}g',
                                           style: theme.textTheme.bodySmall,
                                         ),
+                                        const SizedBox(height: 6),
+                                        IconButton(
+                                          tooltip: 'Add to Today',
+                                          icon: Icon(
+                                            Icons.add_circle_outline,
+                                            color: Provider.of<ThemeProvider>(
+                                              context,
+                                              listen: false,
+                                            ).getAccentColor(context),
+                                          ),
+                                          onPressed: () async {
+                                            final macroProvider =
+                                                Provider.of<MacroProvider>(
+                                                  context,
+                                                  listen: false,
+                                                );
+                                            final ok = await macroProvider
+                                                .relogMeal(meal);
+                                            if (context.mounted) {
+                                              ScaffoldMessenger.of(
+                                                context,
+                                              ).showSnackBar(
+                                                SnackBar(
+                                                  content: Text(
+                                                    ok
+                                                        ? 'Added to today'
+                                                        : 'Failed: ${macroProvider.error}',
+                                                  ),
+                                                  backgroundColor: ok
+                                                      ? Provider.of<
+                                                              ThemeProvider
+                                                            >(
+                                                              context,
+                                                              listen: false,
+                                                            )
+                                                            .getSuccessColor(
+                                                              context,
+                                                            )
+                                                      : Provider.of<
+                                                              ThemeProvider
+                                                            >(
+                                                              context,
+                                                              listen: false,
+                                                            )
+                                                            .getErrorColor(
+                                                              context,
+                                                            ),
+                                                ),
+                                              );
+                                            }
+                                          },
+                                        ),
                                       ],
                                     ),
                                   ],
@@ -494,65 +554,22 @@ class _HistoryScreenState extends State<HistoryScreen> {
     macroProvider.clearSelectedDay();
   }
 
-  Widget _totalPill(String label, double value, String unit) {
-    final color = Provider.of<ThemeProvider>(
-      context,
-      listen: false,
-    ).getAccentColor(context);
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.08),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: color.withOpacity(0.25)),
-        ),
-        child: Column(
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                color: color.withOpacity(0.8),
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              '${value.toStringAsFixed(1)}$unit',
-              style: TextStyle(
-                fontSize: 14,
-                color: color,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   LineChartData _buildCaloriesChartData(List<DailySummary> summaries) {
     final spots = summaries.asMap().entries.map((entry) {
       final index = entry.key;
       final summary = entry.value;
       return FlSpot(index.toDouble(), summary.totalCalories);
     }).toList();
-
-    // Calculate interval to prevent overlapping labels
     final interval = _calculateInterval(summaries.length);
-
     return LineChartData(
       gridData: FlGridData(
         show: true,
         drawVerticalLine: true,
         verticalInterval: interval,
-        getDrawingHorizontalLine: (value) {
-          return FlLine(color: Colors.grey.withOpacity(0.3), strokeWidth: 1);
-        },
-        getDrawingVerticalLine: (value) {
-          return FlLine(color: Colors.grey.withOpacity(0.3), strokeWidth: 1);
-        },
+        getDrawingHorizontalLine: (value) =>
+            FlLine(color: Colors.grey.withOpacity(0.3), strokeWidth: 1),
+        getDrawingVerticalLine: (value) =>
+            FlLine(color: Colors.grey.withOpacity(0.3), strokeWidth: 1),
       ),
       titlesData: FlTitlesData(
         leftTitles: AxisTitles(
@@ -560,16 +577,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
             showTitles: true,
             reservedSize: 50,
             interval: _calculateYAxisInterval(spots),
-            getTitlesWidget: (value, meta) {
-              return Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: Text(
-                  value.toInt().toString(),
-                  style: const TextStyle(fontSize: 10, color: Colors.grey),
-                  textAlign: TextAlign.right,
-                ),
-              );
-            },
+            getTitlesWidget: (value, meta) => Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: Text(
+                value.toInt().toString(),
+                style: const TextStyle(fontSize: 10, color: Colors.grey),
+                textAlign: TextAlign.right,
+              ),
+            ),
           ),
         ),
         bottomTitles: AxisTitles(
@@ -614,17 +629,16 @@ class _HistoryScreenState extends State<HistoryScreen> {
           barWidth: 3,
           dotData: FlDotData(
             show: true,
-            getDotPainter: (spot, percent, barData, index) {
-              return FlDotCirclePainter(
-                radius: 4,
-                color: Provider.of<ThemeProvider>(
-                  context,
-                  listen: false,
-                ).getCaloriesColor(context),
-                strokeWidth: 2,
-                strokeColor: Colors.white,
-              );
-            },
+            getDotPainter: (spot, percent, barData, index) =>
+                FlDotCirclePainter(
+                  radius: 4,
+                  color: Provider.of<ThemeProvider>(
+                    context,
+                    listen: false,
+                  ).getCaloriesColor(context),
+                  strokeWidth: 2,
+                  strokeColor: Colors.white,
+                ),
           ),
         ),
       ],
@@ -632,32 +646,31 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   LineChartData _buildMacrosChartData(List<DailySummary> summaries) {
-    final proteinSpots = summaries.asMap().entries.map((entry) {
-      return FlSpot(entry.key.toDouble(), entry.value.totalProtein);
-    }).toList();
-
-    final carbsSpots = summaries.asMap().entries.map((entry) {
-      return FlSpot(entry.key.toDouble(), entry.value.totalCarbs);
-    }).toList();
-
-    final fatsSpots = summaries.asMap().entries.map((entry) {
-      return FlSpot(entry.key.toDouble(), entry.value.totalFats);
-    }).toList();
-
-    // Calculate interval to prevent overlapping labels
+    final proteinSpots = summaries
+        .asMap()
+        .entries
+        .map((e) => FlSpot(e.key.toDouble(), e.value.totalProtein))
+        .toList();
+    final carbsSpots = summaries
+        .asMap()
+        .entries
+        .map((e) => FlSpot(e.key.toDouble(), e.value.totalCarbs))
+        .toList();
+    final fatsSpots = summaries
+        .asMap()
+        .entries
+        .map((e) => FlSpot(e.key.toDouble(), e.value.totalFats))
+        .toList();
     final interval = _calculateInterval(summaries.length);
-
     return LineChartData(
       gridData: FlGridData(
         show: true,
         drawVerticalLine: true,
         verticalInterval: interval,
-        getDrawingHorizontalLine: (value) {
-          return FlLine(color: Colors.grey.withOpacity(0.3), strokeWidth: 1);
-        },
-        getDrawingVerticalLine: (value) {
-          return FlLine(color: Colors.grey.withOpacity(0.3), strokeWidth: 1);
-        },
+        getDrawingHorizontalLine: (value) =>
+            FlLine(color: Colors.grey.withOpacity(0.3), strokeWidth: 1),
+        getDrawingVerticalLine: (value) =>
+            FlLine(color: Colors.grey.withOpacity(0.3), strokeWidth: 1),
       ),
       titlesData: FlTitlesData(
         leftTitles: AxisTitles(
@@ -669,16 +682,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
               carbsSpots,
               fatsSpots,
             ]),
-            getTitlesWidget: (value, meta) {
-              return Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: Text(
-                  value.toInt().toString(),
-                  style: const TextStyle(fontSize: 10, color: Colors.grey),
-                  textAlign: TextAlign.right,
-                ),
-              );
-            },
+            getTitlesWidget: (value, meta) => Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: Text(
+                value.toInt().toString(),
+                style: const TextStyle(fontSize: 10, color: Colors.grey),
+                textAlign: TextAlign.right,
+              ),
+            ),
           ),
         ),
         bottomTitles: AxisTitles(
@@ -751,7 +762,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
-  // Helper methods for calculating intervals to prevent overlapping labels
   double _calculateInterval(int dataLength) {
     if (dataLength <= 7) return 1;
     if (dataLength <= 14) return 2;
@@ -761,15 +771,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   double? _calculateYAxisInterval(List<FlSpot> spots) {
     if (spots.isEmpty) return null;
-
-    final maxValue = spots
-        .map((spot) => spot.y)
-        .reduce((a, b) => a > b ? a : b);
-    final minValue = spots
-        .map((spot) => spot.y)
-        .reduce((a, b) => a < b ? a : b);
+    final maxValue = spots.map((s) => s.y).reduce((a, b) => a > b ? a : b);
+    final minValue = spots.map((s) => s.y).reduce((a, b) => a < b ? a : b);
     final range = maxValue - minValue;
-
     if (range <= 100) return 20;
     if (range <= 500) return 50;
     if (range <= 1000) return 100;
@@ -778,16 +782,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   double? _calculateMacroYAxisInterval(List<List<FlSpot>> allSpots) {
     if (allSpots.isEmpty) return null;
-
-    final allValues = allSpots
-        .expand((spots) => spots.map((spot) => spot.y))
-        .toList();
-    if (allValues.isEmpty) return null;
-
-    final maxValue = allValues.reduce((a, b) => a > b ? a : b);
-    final minValue = allValues.reduce((a, b) => a < b ? a : b);
+    final values = allSpots.expand((l) => l.map((s) => s.y)).toList();
+    if (values.isEmpty) return null;
+    final maxValue = values.reduce((a, b) => a > b ? a : b);
+    final minValue = values.reduce((a, b) => a < b ? a : b);
     final range = maxValue - minValue;
-
     if (range <= 50) return 10;
     if (range <= 100) return 20;
     if (range <= 200) return 25;
@@ -954,6 +953,55 @@ class _MacroChip extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _TotalPill extends StatelessWidget {
+  final String label;
+  final double value;
+  final String unit;
+  const _TotalPill({
+    required this.label,
+    required this.value,
+    required this.unit,
+  });
+  @override
+  Widget build(BuildContext context) {
+    final color = Provider.of<ThemeProvider>(
+      context,
+      listen: false,
+    ).getAccentColor(context);
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: color.withOpacity(0.25)),
+        ),
+        child: Column(
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                color: color.withOpacity(0.8),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              '${value.toStringAsFixed(1)}$unit',
+              style: TextStyle(
+                fontSize: 14,
+                color: color,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

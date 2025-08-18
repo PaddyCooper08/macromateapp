@@ -937,89 +937,49 @@ app.post('/api/migrate-user', async (req, res) => {
   }
 });
 
-// Error handling middleware
-app.use((error, req, res, next) => {
-  console.error('Unhandled error:', error);
-  console.error('Error details:', {
-    name: error.name,
-    message: error.message,
-    code: error.code,
-    stack: error.stack
-  });
-  
-  if (error instanceof multer.MulterError) {
-    if (error.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).json({
-        success: false,
-        error: 'File too large',
-        message: 'Image file must be smaller than 10MB'
-      });
-    }
-  }
-  
-  // Handle file filter errors
-  if (error.message === 'Only image files are allowed') {
-    return res.status(400).json({
-      success: false,
-      error: 'Invalid file type',
-      message: 'Please upload a valid image file (JPG, PNG, GIF, etc.)'
-    });
-  }
-  
-  res.status(500).json({
-    success: false,
-    error: 'Internal server error',
-    message: process.env.NODE_ENV === 'development' ? error.message : 'Something went wrong'
-  });
-});
-
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    error: 'Not found',
-    message: 'The requested endpoint does not exist'
-  });
-});
-
-// Start the server
-async function startServer() {
+// Re-log (duplicate) a past macro entry into today
+app.post('/api/relog-macro', async (req, res) => {
   try {
-    console.log("🤖 Starting MacroMate Express Server...");
-    console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`🔌 Port: ${PORT}`);
-
-    // Test connections (non-blocking for Cloud Run)
-    if (process.env.GEMINI_API_KEY && process.env.NODE_ENV !== 'production') {
-      try {
-        console.log("🧪 Testing Gemini service...");
-        await testService();
-        console.log("✅ Gemini service working");
-      } catch (error) {
-        console.warn("⚠️ Gemini service test failed (continuing anyway):", error.message);
-      }
-    } else {
-      console.log("⏭️ Skipping Gemini test for production startup");
+    const { userId, foodItem, protein, carbs, fats, calories } = req.body;
+    if (!userId || !foodItem || protein == null || carbs == null || fats == null || calories == null) {
+      return res.status(400).json({ success: false, error: 'Missing required fields' });
     }
 
-    const server = app.listen(PORT, '0.0.0.0', () => {
-      console.log(`🚀 MacroMate Express Server is running on port ${PORT}!`);
-      console.log(`📱 Ready to serve Flutter app requests`);
-      console.log(`🌐 Health check: http://localhost:${PORT}/health`);
-    });
+    const now = new Date();
+    const date = now.toISOString().split('T')[0];
+    const mealTime = now.toISOString();
 
-    // Graceful shutdown
-    process.on('SIGTERM', () => {
-      console.log('📴 SIGTERM received, shutting down gracefully');
-      server.close(() => {
-        console.log('💤 Process terminated');
-      });
-    });
+    const savedData = await saveMacrosToDb(
+      userId,
+      date,
+      mealTime,
+      String(foodItem),
+      parseFloat(protein),
+      parseFloat(carbs),
+      parseFloat(fats),
+      parseFloat(calories)
+    );
 
+    res.json({
+      success: true,
+      data: {
+        id: savedData.id,
+        foodItem: savedData.food_item,
+        protein: parseFloat(savedData.protein_g),
+        carbs: parseFloat(savedData.carbs_g),
+        fats: parseFloat(savedData.fats_g),
+        calories: parseFloat(savedData.calories),
+        date: savedData.log_date,
+        mealTime: savedData.meal_time
+      },
+      message: 'Meal added to today'
+    });
   } catch (error) {
-    console.error("❌ Failed to start server:", error);
-    process.exit(1);
+    console.error('Error re-logging macro:', error);
+    res.status(500).json({ success: false, error: 'Failed to re-log macro', message: error.message });
   }
-}
+});
 
-startServer();
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});

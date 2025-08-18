@@ -339,4 +339,25 @@ class ApiService {
       throw Exception(response['error'] ?? 'Migration failed');
     }
   }
+
+  // Re-log a past macro entry into today
+  static Future<MacroEntry> relogMacro(String userId, MacroEntry entry) async {
+    final response = await _makeRequest(
+      '/api/relog-macro',
+      'POST',
+      body: {
+        'userId': userId,
+        'foodItem': entry.foodItem,
+        'protein': entry.protein,
+        'carbs': entry.carbs,
+        'fats': entry.fats,
+        'calories': entry.calories,
+      },
+    );
+    if (response['success'] == true) {
+      return MacroEntry.fromJson(response['data']);
+    } else {
+      throw Exception(response['error'] ?? 'Failed to re-log meal');
+    }
+  }
 }

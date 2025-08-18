@@ -49,33 +49,54 @@ class MealList extends StatelessWidget {
       );
     }
 
-    final items = meals.toList().reversed.toList();
+    // Group meals by identical macro signature + food name
+    final Map<String, _MealGroup> grouped = {};
+    for (final m in meals) {
+      final key =
+          '${m.foodItem}|${m.protein}|${m.carbs}|${m.fats}|${m.calories}';
+      grouped.putIfAbsent(key, () => _MealGroup(sample: m, entries: []));
+      grouped[key]!.entries.add(m);
+    }
+
+    final groups = grouped.values.toList().reversed.toList();
 
     return SliverList(
       delegate: SliverChildBuilderDelegate((context, index) {
-        final meal = items[index];
+        final group = groups[index];
         return Padding(
           padding: EdgeInsets.fromLTRB(
             16,
             index == 0 ? 0 : 8,
             16,
-            index == items.length - 1 ? 16 : 8,
+            index == groups.length - 1 ? 16 : 8,
           ),
-          child: MealCard(meal: meal),
+          child: _GroupedMealCard(group: group),
         );
-      }, childCount: items.length),
+      }, childCount: groups.length),
     );
   }
 }
 
-class MealCard extends StatelessWidget {
-  final MacroEntry meal;
+class _MealGroup {
+  final MacroEntry sample;
+  final List<MacroEntry> entries;
+  _MealGroup({required this.sample, required this.entries});
+  int get count => entries.length;
+  double get proteinTotal => sample.protein * count;
+  double get carbsTotal => sample.carbs * count;
+  double get fatsTotal => sample.fats * count;
+  double get caloriesTotal => sample.calories * count;
+}
 
-  const MealCard({super.key, required this.meal});
+class _GroupedMealCard extends StatelessWidget {
+  final _MealGroup group;
+  const _GroupedMealCard({required this.group});
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final timeFormatter = DateFormat('HH:mm');
+    final firstTime = group.entries.first.mealTime;
 
     return Card(
       elevation: 2,
@@ -85,7 +106,6 @@ class MealCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header with food name and time
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -94,81 +114,33 @@ class MealCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        meal.foodItem,
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.bold),
+                        group.sample.foodItem,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        timeFormatter.format(meal.mealTime),
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onBackground.withOpacity(0.6),
+                        'First: ${timeFormatter.format(firstTime)}',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onBackground.withOpacity(
+                            0.6,
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      onPressed: () => _addToFavorites(context),
-                      icon: Icon(
-                        Icons.favorite_border,
-                        color: Provider.of<ThemeProvider>(
-                          context,
-                          listen: false,
-                        ).getAccentColor(context),
-                      ),
-                      tooltip: 'Add to Favorites',
-                      style: IconButton.styleFrom(
-                        backgroundColor: Provider.of<ThemeProvider>(
-                          context,
-                          listen: false,
-                        ).getButtonBackgroundColor(context),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        padding: const EdgeInsets.all(8),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    IconButton(
-                      onPressed: () => _deleteMeal(context),
-                      icon: Icon(
-                        Icons.delete_outline,
-                        color: Provider.of<ThemeProvider>(
-                          context,
-                          listen: false,
-                        ).getErrorColor(context),
-                      ),
-                      tooltip: 'Delete',
-                      style: IconButton.styleFrom(
-                        backgroundColor: Provider.of<ThemeProvider>(
-                          context,
-                          listen: false,
-                        ).getButtonBackgroundColor(context),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        padding: const EdgeInsets.all(8),
-                      ),
-                    ),
-                  ],
-                ),
+                _QuantityAdjust(group: group),
               ],
             ),
             const SizedBox(height: 12),
-
-            // Macros row
             Row(
               children: [
                 Expanded(
                   child: _MacroChip(
                     label: 'Protein',
-                    value: meal.protein,
+                    value: group.proteinTotal,
                     unit: 'g',
                     color: Provider.of<ThemeProvider>(
                       context,
@@ -180,7 +152,7 @@ class MealCard extends StatelessWidget {
                 Expanded(
                   child: _MacroChip(
                     label: 'Carbs',
-                    value: meal.carbs,
+                    value: group.carbsTotal,
                     unit: 'g',
                     color: Provider.of<ThemeProvider>(
                       context,
@@ -192,7 +164,7 @@ class MealCard extends StatelessWidget {
                 Expanded(
                   child: _MacroChip(
                     label: 'Fats',
-                    value: meal.fats,
+                    value: group.fatsTotal,
                     unit: 'g',
                     color: Provider.of<ThemeProvider>(
                       context,
@@ -203,8 +175,6 @@ class MealCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
-
-            // Calories
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
@@ -234,7 +204,7 @@ class MealCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    '${meal.calories.toStringAsFixed(0)} kcal',
+                    '${group.caloriesTotal.toStringAsFixed(0)} kcal',
                     style: TextStyle(
                       color: Provider.of<ThemeProvider>(
                         context,
@@ -251,79 +221,94 @@ class MealCard extends StatelessWidget {
       ),
     );
   }
+}
 
-  Future<void> _addToFavorites(BuildContext context) async {
-    final macroProvider = Provider.of<MacroProvider>(context, listen: false);
-    final success = await macroProvider.addToFavorites(meal);
+class _QuantityAdjust extends StatelessWidget {
+  final _MealGroup group;
+  const _QuantityAdjust({required this.group});
 
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            success ? 'Added to favorites!' : 'Failed to add to favorites',
+  @override
+  Widget build(BuildContext context) {
+    final provider = Provider.of<MacroProvider>(context, listen: false);
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          tooltip: 'Decrease',
+          onPressed: group.count > 1
+              ? () async {
+                  // Delete one matching entry (choose last for determinism)
+                  final entry = group.entries.last;
+                  if (entry.id != null) {
+                    await provider.deleteMacroEntry(entry.id!);
+                  }
+                }
+              : null,
+          icon: Icon(
+            Icons.remove,
+            color: themeProvider.getAccentColor(context),
           ),
-          backgroundColor: success
-              ? Provider.of<ThemeProvider>(
-                  context,
-                  listen: false,
-                ).getSuccessColor(context)
-              : Provider.of<ThemeProvider>(
-                  context,
-                  listen: false,
-                ).getErrorColor(context),
         ),
-      );
-    }
-  }
-
-  Future<void> _deleteMeal(BuildContext context) async {
-    if (meal.id == null) return;
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Meal'),
-        content: Text('Are you sure you want to delete "${meal.foodItem}"?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: TextButton.styleFrom(
-              foregroundColor: Provider.of<ThemeProvider>(
-                context,
-                listen: false,
-              ).getErrorColor(context),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(
+              color: themeProvider.getAccentColor(context).withOpacity(0.4),
             ),
-            child: const Text('Delete'),
           ),
-        ],
-      ),
+          child: Text(
+            'x${group.count}',
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+        ),
+        IconButton(
+          tooltip: 'Increase',
+          onPressed: () async {
+            await provider.relogMeal(group.sample);
+          },
+          icon: Icon(Icons.add, color: themeProvider.getAccentColor(context)),
+        ),
+        const SizedBox(width: 4),
+        IconButton(
+          tooltip: 'Add to Favorites',
+          onPressed: () async {
+            final ok = await provider.addToFavorites(group.sample);
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    ok ? 'Added to favorites' : 'Failed: ${provider.error}',
+                  ),
+                  backgroundColor: ok
+                      ? themeProvider.getSuccessColor(context)
+                      : themeProvider.getErrorColor(context),
+                ),
+              );
+            }
+          },
+          icon: Icon(
+            Icons.favorite_border,
+            color: themeProvider.getAccentColor(context),
+          ),
+        ),
+        IconButton(
+          tooltip: 'Delete All',
+          onPressed: () async {
+            for (final e in List<MacroEntry>.from(group.entries)) {
+              if (e.id != null) {
+                await provider.deleteMacroEntry(e.id!);
+              }
+            }
+          },
+          icon: Icon(
+            Icons.delete_outline,
+            color: themeProvider.getErrorColor(context),
+          ),
+        ),
+      ],
     );
-
-    if (confirmed == true && context.mounted) {
-      final macroProvider = Provider.of<MacroProvider>(context, listen: false);
-      final success = await macroProvider.deleteMacroEntry(meal.id!);
-
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(success ? 'Meal deleted' : 'Failed to delete meal'),
-            backgroundColor: success
-                ? Provider.of<ThemeProvider>(
-                    context,
-                    listen: false,
-                  ).getSuccessColor(context)
-                : Provider.of<ThemeProvider>(
-                    context,
-                    listen: false,
-                  ).getErrorColor(context),
-          ),
-        );
-      }
-    }
   }
 }
 
