@@ -37,14 +37,23 @@ class ThemeProvider extends ChangeNotifier {
   ThemeData get lightTheme => ThemeData(
     useMaterial3: true,
     brightness: Brightness.light,
+    scaffoldBackgroundColor: Colors.white, // unify background
     colorScheme: ColorScheme.fromSeed(
       seedColor: Colors.blue,
       brightness: Brightness.light,
     ),
     appBarTheme: const AppBarTheme(
+      backgroundColor: Colors.white, // match light icon background
+      surfaceTintColor: Colors.transparent, // remove M3 tonal overlay
       centerTitle: false,
       elevation: 0,
-      scrolledUnderElevation: 1,
+      scrolledUnderElevation: 0,
+      iconTheme: IconThemeData(color: Colors.black),
+      titleTextStyle: TextStyle(
+        color: Colors.black,
+        fontSize: 20,
+        fontWeight: FontWeight.w500,
+      ),
     ),
     cardTheme: CardThemeData(
       elevation: 2,

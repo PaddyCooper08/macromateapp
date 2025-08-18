@@ -31,6 +31,19 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _onSignedIn(User user) async {
+    if (user.emailConfirmedAt == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Please verify your email before continuing. Check your inbox.',
+            ),
+          ),
+        );
+      }
+      return; // Block access until verified
+    }
+
     // If user had a Telegram ID locally, migrate data
     final existingId = await UserStorageService.getUserId();
     if (existingId != null &&
@@ -82,6 +95,18 @@ class _LoginScreenState extends State<LoginScreen> {
         }
         return;
       }
+      if (user.emailConfirmedAt == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Email not verified yet. Please verify then tap Sign In again.',
+              ),
+            ),
+          );
+        }
+        return;
+      }
       await _onSignedIn(user);
     } catch (e) {
       if (!mounted) return;
@@ -98,22 +123,30 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _authLoading = true);
     try {
       final supabase = Supabase.instance.client;
+      // Configure redirect URL (set SUPABASE_REDIRECT_URL via --dart-define or falls back)
+      const redirectUrl = String.fromEnvironment(
+        'SUPABASE_REDIRECT_URL',
+        defaultValue: 'https://macromate.com',
+      );
       final response = await supabase.auth.signUp(
         email: _emailController.text.trim(),
         password: _passwordController.text,
+        emailRedirectTo: redirectUrl,
       );
       final user = response.user ?? supabase.auth.currentUser;
-      if (user == null) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Check your email to confirm your registration.'),
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Verification email sent. Verify then Sign In. (Redirect: $redirectUrl)',
             ),
-          );
-        }
-        return;
+          ),
+        );
       }
-      await _onSignedIn(user);
+      if (user != null && user.emailConfirmedAt != null) {
+        await _onSignedIn(user); // immediate verification edge
+      }
+      // Do not navigate until verified
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(

@@ -18,6 +18,12 @@ import {
 } from "./supabaseClient.js";
 import { calculateMacros, testService, calculateImageMacros } from "./geminiService.js";
 import { createClient } from '@supabase/supabase-js';
+import { createClient as createSupabaseAdminClient } from '@supabase/supabase-js';
+
+// Admin Supabase client (service role key ONLY on server)
+const supabaseAdmin = (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY)
+  ? createSupabaseAdminClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
+  : null;
 
 // Validate required environment variables
 if (!process.env.GEMINI_API_KEY) {
@@ -913,7 +919,9 @@ app.post('/api/migrate-user', async (req, res) => {
     if (!telegramId || !supabaseUserId) {
       return res.status(400).json({ success: false, error: 'telegramId and supabaseUserId are required' });
     }
-
+    if (req.authUser.id !== supabaseUserId) {
+      return res.status(403).json({ success: false, error: 'Cannot migrate for another user' });
+    }
     const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
 
     // Update macro_logs
@@ -935,6 +943,37 @@ app.post('/api/migrate-user', async (req, res) => {
     console.error('Migration error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
+});
+
+function requireAuth(req, res, next) {
+  if (!supabaseAdmin) {
+    return res.status(500).json({ success: false, error: 'Server auth not configured' });
+  }
+  const auth = req.headers.authorization || '';
+  if (!auth.startsWith('Bearer ')) {
+    return res.status(401).json({ success: false, error: 'Missing bearer token' });
+  }
+  const token = auth.slice(7);
+  supabaseAdmin.auth.getUser(token)
+    .then(({ data, error }) => {
+      if (error || !data?.user) {
+        return res.status(401).json({ success: false, error: 'Invalid token' });
+      }
+      req.authUser = data.user;
+      next();
+    })
+    .catch(() => res.status(500).json({ success: false, error: 'Auth verification failed' }));
+}
+
+// Apply auth to all API routes (leave /health open)
+app.use('/api', requireAuth);
+
+// Enforce :userId params (if present) to match authenticated user
+app.param('userId', (req, res, next, userId) => {
+  if (req.authUser && req.authUser.id !== userId) {
+    return res.status(403).json({ success: false, error: 'Forbidden: user mismatch' });
+  }
+  return next();
 });
 
 app.listen(PORT, () => {

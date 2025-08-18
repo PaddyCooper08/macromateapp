@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import '../models/macro_entry.dart';
 import '../models/favorite_food.dart';
 import '../models/daily_summary.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ApiService {
   // Production server URL - Google Cloud Run
@@ -21,7 +22,21 @@ class ApiService {
     Map<String, String>? headers,
   }) async {
     final uri = Uri.parse('$baseUrl$endpoint');
-    final defaultHeaders = {'Content-Type': 'application/json', ...?headers};
+    String? bearer;
+    try {
+      // Lazy import to avoid tight coupling if Supabase not initialized
+      // ignore: avoid_dynamic_calls
+      final supabase = Supabase.instance.client;
+      bearer = supabase.auth.currentSession?.accessToken;
+    } catch (_) {}
+    final authHeader = bearer != null
+        ? {'Authorization': 'Bearer $bearer'}
+        : {};
+    final Map<String, String> defaultHeaders = {
+      'Content-Type': 'application/json',
+      ...authHeader,
+      ...?headers,
+    };
 
     http.Response response;
 

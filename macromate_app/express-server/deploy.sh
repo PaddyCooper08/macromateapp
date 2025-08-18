@@ -10,7 +10,7 @@ PROJECT_ID="macromate-468121"
 SUPABASE_URL=https://oabuwijptyrmnhzwekgo.supabase.co
 SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9hYnV3aWpwdHlybW5oendla2dvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMxMzQzOTQsImV4cCI6MjA2ODcxMDM5NH0.Eu5L2OJ8rxMebj1dAJGoFzheisOWJjna-w98hTeJywM
 GEMINI_API_KEY=AIzaSyDnh4h4J2qvvf34aR_wQwEj_x-MQQg6-s4
-
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9hYnV3aWpwdHlybW5oendla2dvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MzEzNDM5NCwiZXhwIjoyMDY4NzEwMzk0fQ.g7gME_3rDwKvNO1QcUra7upE5XSreslLz-PzDK6GM-s
 # Set region
 REGION="europe-west1"
 
@@ -34,7 +34,7 @@ gcloud run deploy $SERVICE_NAME \
   --max-instances 10 \
   --timeout 300 \
   --port 8080 \
-  --set-env-vars "NODE_ENV=production,GEMINI_API_KEY=${GEMINI_API_KEY},SUPABASE_URL=${SUPABASE_URL},SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}" \
+  --set-env-vars "NODE_ENV=production,GEMINI_API_KEY=${GEMINI_API_KEY},SUPABASE_URL=${SUPABASE_URL},SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY},SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}" \
   --project $PROJECT_ID
 
 echo "✅ Deployment complete!"
