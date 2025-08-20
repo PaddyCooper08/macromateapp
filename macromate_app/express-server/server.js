@@ -18,21 +18,9 @@ import {
 } from "./supabaseClient.js";
 import { calculateMacros, testService, calculateImageMacros } from "./geminiService.js";
 import { createClient } from '@supabase/supabase-js';
-import { createClient as createSupabaseAdminClient } from '@supabase/supabase-js';
 
-// Admin Supabase client (service role key ONLY on server)
-const supabaseAdmin = (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY)
-  ? createSupabaseAdminClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
-  : null;
-
-// Validate required environment variables
-if (!process.env.GEMINI_API_KEY) {
-  console.warn("⚠️ Missing GEMINI_API_KEY environment variable - some features may not work");
-}
-
-if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
-  console.warn("⚠️ Missing Supabase environment variables - database features may not work");
-}
+// Simple API key middleware (shared secret) – set MACROMATE_API_KEY in env
+const API_KEY = process.env.MACROMATE_API_KEY;
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -912,68 +900,57 @@ app.put('/api/favorites/:userId/:favoriteId', async (req, res) => {
   }
 });
 
-// Migration endpoint: move data from Telegram ID to Supabase auth user.id
-app.post('/api/migrate-user', async (req, res) => {
+// Re-log (duplicate) a past macro entry into today
+app.post('/api/relog-macro', async (req, res) => {
   try {
-    const { telegramId, supabaseUserId } = req.body;
-    if (!telegramId || !supabaseUserId) {
-      return res.status(400).json({ success: false, error: 'telegramId and supabaseUserId are required' });
+    const { userId, foodItem, protein, carbs, fats, calories } = req.body;
+    if (!userId || !foodItem || protein == null || carbs == null || fats == null || calories == null) {
+      return res.status(400).json({ success: false, error: 'Missing required fields' });
     }
-    if (req.authUser.id !== supabaseUserId) {
-      return res.status(403).json({ success: false, error: 'Cannot migrate for another user' });
-    }
-    const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
 
-    // Update macro_logs
-    const { error: macroErr } = await supabase
-      .from('macro_logs')
-      .update({ user_id: supabaseUserId })
-      .eq('user_id', telegramId.toString());
-    if (macroErr) throw macroErr;
+    const now = new Date();
+    const date = now.toISOString().split('T')[0];
+    const mealTime = now.toISOString();
 
-    // Update favorite_foods
-    const { error: favErr } = await supabase
-      .from('favorite_foods')
-      .update({ user_id: supabaseUserId })
-      .eq('user_id', telegramId.toString());
-    if (favErr) throw favErr;
+    const saved = await saveMacrosToDb(
+      userId,
+      date,
+      mealTime,
+      String(foodItem),
+      parseFloat(protein),
+      parseFloat(carbs),
+      parseFloat(fats),
+      parseFloat(calories)
+    );
 
-    res.json({ success: true, message: 'Migration completed' });
+    res.json({
+      success: true,
+      data: {
+        id: saved.id,
+        foodItem: saved.food_item,
+        protein: parseFloat(saved.protein_g),
+        carbs: parseFloat(saved.carbs_g),
+        fats: parseFloat(saved.fats_g),
+        calories: parseFloat(saved.calories),
+        date: saved.log_date,
+        mealTime: saved.meal_time
+      },
+      message: 'Meal added to today'
+    });
   } catch (error) {
-    console.error('Migration error:', error);
-    res.status(500).json({ success: false, error: error.message });
+    console.error('Error re-logging macro:', error);
+    res.status(500).json({ success: false, error: 'Failed to re-log macro', message: error.message });
   }
 });
 
-function requireAuth(req, res, next) {
-  if (!supabaseAdmin) {
-    return res.status(500).json({ success: false, error: 'Server auth not configured' });
+// Apply API key auth to all /api routes
+app.use('/api', (req, res, next) => {
+  if (!API_KEY) return next(); // if not set, allow (development fallback)
+  const key = req.headers['x-api-key'];
+  if (key !== API_KEY) {
+    return res.status(401).json({ success: false, error: 'Invalid API key' });
   }
-  const auth = req.headers.authorization || '';
-  if (!auth.startsWith('Bearer ')) {
-    return res.status(401).json({ success: false, error: 'Missing bearer token' });
-  }
-  const token = auth.slice(7);
-  supabaseAdmin.auth.getUser(token)
-    .then(({ data, error }) => {
-      if (error || !data?.user) {
-        return res.status(401).json({ success: false, error: 'Invalid token' });
-      }
-      req.authUser = data.user;
-      next();
-    })
-    .catch(() => res.status(500).json({ success: false, error: 'Auth verification failed' }));
-}
-
-// Apply auth to all API routes (leave /health open)
-app.use('/api', requireAuth);
-
-// Enforce :userId params (if present) to match authenticated user
-app.param('userId', (req, res, next, userId) => {
-  if (req.authUser && req.authUser.id !== userId) {
-    return res.status(403).json({ success: false, error: 'Forbidden: user mismatch' });
-  }
-  return next();
+  next();
 });
 
 app.listen(PORT, () => {

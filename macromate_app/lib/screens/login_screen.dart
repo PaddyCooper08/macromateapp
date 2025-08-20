@@ -17,8 +17,6 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _telegramIdController = TextEditingController();
-  final _formKey = GlobalKey<FormState>();
   bool _authLoading = false;
   bool _obscure = true;
 
@@ -26,7 +24,6 @@ class _LoginScreenState extends State<LoginScreen> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
-    _telegramIdController.dispose();
     super.dispose();
   }
 
@@ -42,30 +39,6 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       }
       return; // Block access until verified
-    }
-
-    // If user had a Telegram ID locally, migrate data
-    final existingId = await UserStorageService.getUserId();
-    if (existingId != null &&
-        existingId != user.id &&
-        RegExp(r'^\d+$').hasMatch(existingId)) {
-      try {
-        await ApiService.migrateTelegramToSupabase(
-          telegramId: existingId,
-          supabaseUserId: user.id,
-        );
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Data migrated from Telegram')),
-          );
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Migration failed (continuing): $e')),
-          );
-        }
-      }
     }
 
     final macroProvider = Provider.of<MacroProvider>(context, listen: false);
@@ -173,22 +146,6 @@ class _LoginScreenState extends State<LoginScreen> {
       return false;
     }
     return true;
-  }
-
-  Future<void> _loginTelegram() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    final macroProvider = Provider.of<MacroProvider>(context, listen: false);
-    final success = await macroProvider.login(
-      _telegramIdController.text.trim(),
-      source: 'telegram',
-    );
-
-    if (success && mounted) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
-      );
-    }
   }
 
   @override
@@ -335,74 +292,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
 
                 const SizedBox(height: 16),
-
-                // Telegram fallback / migration
-                Card(
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Text(
-                            'Or continue with Telegram ID',
-                            style: Theme.of(context).textTheme.titleMedium,
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 16),
-                          TextFormField(
-                            controller: _telegramIdController,
-                            decoration: InputDecoration(
-                              labelText: 'Telegram ID',
-                              hintText: 'Enter your Telegram ID',
-                              prefixIcon: const Icon(Icons.telegram),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              helperText:
-                                  'Find your ID by messaging @userinfobot on Telegram',
-                              helperMaxLines: 2,
-                            ),
-                            keyboardType: TextInputType.number,
-                            validator: (value) {
-                              if (value == null || value.trim().isEmpty) {
-                                return 'Please enter your Telegram ID';
-                              }
-                              if (!RegExp(r'^\d+$').hasMatch(value.trim())) {
-                                return 'Telegram ID should only contain numbers';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 16),
-                          Consumer<MacroProvider>(
-                            builder: (context, macroProvider, child) {
-                              return OutlinedButton(
-                                onPressed: macroProvider.isLoading
-                                    ? null
-                                    : _loginTelegram,
-                                child: macroProvider.isLoading
-                                    ? const SizedBox(
-                                        height: 20,
-                                        width: 20,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                        ),
-                                      )
-                                    : const Text('Continue'),
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
               ],
             ),
           ),
