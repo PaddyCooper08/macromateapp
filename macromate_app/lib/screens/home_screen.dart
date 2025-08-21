@@ -68,7 +68,35 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: CustomAppBar(
         title: _getAppBarTitle(),
         actions: [
-          if (_currentIndex == 0)
+          if (_currentIndex == 0) ...[
+            // Gemini usage counter
+            Consumer<MacroProvider>(
+              builder: (context, macroProvider, child) {
+                if (macroProvider.adFree) {
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 8.0),
+                    child: Center(
+                      child: Text(
+                        'AD-FREE',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  );
+                }
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                  child: Center(
+                    child: Text(
+                      'Gemini: ${macroProvider.geminiUses}/3',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ),
+                );
+              },
+            ),
             IconButton(
               onPressed: () {
                 Provider.of<MacroProvider>(
@@ -79,13 +107,59 @@ class _HomeScreenState extends State<HomeScreen> {
               icon: const Icon(Icons.refresh),
               tooltip: 'Refresh',
             ),
+          ],
           PopupMenuButton<String>(
-            onSelected: (value) {
+            onSelected: (value) async {
               if (value == 'logout') {
                 _logout();
+              } else if (value == 'toggle_ad_free') {
+                final macroProvider = Provider.of<MacroProvider>(
+                  context,
+                  listen: false,
+                );
+                await macroProvider.setAdFree(!macroProvider.adFree);
+
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        macroProvider.adFree
+                            ? 'Ad-free mode enabled (Testing)'
+                            : 'Ad-free mode disabled (Testing)',
+                      ),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                }
               }
             },
             itemBuilder: (context) => [
+              PopupMenuItem<String>(
+                value: 'toggle_ad_free',
+                child: Consumer<MacroProvider>(
+                  builder: (context, macroProvider, child) => Row(
+                    children: [
+                      Icon(
+                        macroProvider.adFree ? Icons.block : Icons.local_offer,
+                        color: macroProvider.adFree
+                            ? Colors.green
+                            : Colors.orange,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        macroProvider.adFree
+                            ? 'Disable Ad-Free (Testing)'
+                            : 'Enable Ad-Free (Testing)',
+                        style: TextStyle(
+                          color: macroProvider.adFree
+                              ? Colors.green
+                              : Colors.orange,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
               PopupMenuItem<String>(
                 value: 'logout',
                 child: Row(

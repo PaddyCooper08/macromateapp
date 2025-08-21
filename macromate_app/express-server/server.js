@@ -15,6 +15,7 @@ import {
   getFavoriteItems,
   deleteFavoriteItem,
   updateFavoriteItem,
+  updateMacroLogName,
 } from "./supabaseClient.js";
 import { calculateMacros, testService, calculateImageMacros } from "./geminiService.js";
 import { createClient } from '@supabase/supabase-js';
@@ -940,6 +941,42 @@ app.post('/api/relog-macro', async (req, res) => {
   } catch (error) {
     console.error('Error re-logging macro:', error);
     res.status(500).json({ success: false, error: 'Failed to re-log macro', message: error.message });
+  }
+});
+
+// Update a macro log name
+app.put('/api/macro-log/:logId', async (req, res) => {
+  try {
+    const { logId } = req.params;
+    const userId = req.query.userId || req.body.userId;
+    const { foodItem } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({ success: false, error: 'Missing userId' });
+    }
+    if (!foodItem || foodItem.trim() === '') {
+      return res.status(400).json({ success: false, error: 'Food item is required' });
+    }
+
+    const updated = await updateMacroLogName(logId, userId, foodItem.trim());
+
+    res.json({
+      success: true,
+      data: {
+        id: updated.id,
+        foodItem: updated.food_item,
+        protein: parseFloat(updated.protein_g),
+        carbs: parseFloat(updated.carbs_g),
+        fats: parseFloat(updated.fats_g),
+        calories: parseFloat(updated.calories),
+        date: updated.log_date,
+        mealTime: updated.meal_time,
+      },
+      message: 'Meal updated successfully!'
+    });
+  } catch (error) {
+    console.error('Error updating macro log:', error);
+    res.status(500).json({ success: false, error: 'Failed to update meal', message: error.message });
   }
 });
 

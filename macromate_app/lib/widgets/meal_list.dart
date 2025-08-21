@@ -235,6 +235,60 @@ class _QuantityAdjust extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         IconButton(
+          tooltip: 'Rename',
+          onPressed: group.entries.isNotEmpty && group.entries.first.id != null
+              ? () async {
+                  final id = group.entries.first.id!;
+                  final controller = TextEditingController(
+                    text: group.sample.foodItem,
+                  );
+                  final newName = await showDialog<String>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: const Text('Rename Meal'),
+                      content: TextField(
+                        controller: controller,
+                        decoration: const InputDecoration(
+                          labelText: 'Name',
+                          border: OutlineInputBorder(),
+                        ),
+                        autofocus: true,
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.of(ctx).pop(),
+                          child: const Text('Cancel'),
+                        ),
+                        ElevatedButton(
+                          onPressed: () =>
+                              Navigator.of(ctx).pop(controller.text.trim()),
+                          child: const Text('Save'),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (newName != null && newName.isNotEmpty) {
+                    final ok = await provider.renameMacroEntry(id, newName);
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            ok
+                                ? 'Meal renamed'
+                                : 'Rename failed: ${provider.error}',
+                          ),
+                          backgroundColor: ok
+                              ? themeProvider.getSuccessColor(context)
+                              : themeProvider.getErrorColor(context),
+                        ),
+                      );
+                    }
+                  }
+                }
+              : null,
+          icon: Icon(Icons.edit, color: themeProvider.getAccentColor(context)),
+        ),
+        IconButton(
           tooltip: 'Decrease',
           onPressed: group.count > 1
               ? () async {
@@ -296,10 +350,50 @@ class _QuantityAdjust extends StatelessWidget {
         IconButton(
           tooltip: 'Delete All',
           onPressed: () async {
+            final confirmed =
+                await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('Delete meals?'),
+                    content: Text(
+                      'Are you sure you want to delete ${group.count} instance${group.count == 1 ? '' : 's'} of "${group.sample.foodItem}" from today? This cannot be undone.',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(false),
+                        child: const Text('Cancel'),
+                      ),
+                      ElevatedButton(
+                        onPressed: () => Navigator.of(ctx).pop(true),
+                        style: ButtonStyle(
+                          backgroundColor: WidgetStatePropertyAll(
+                            themeProvider.getErrorColor(context),
+                          ),
+                        ),
+                        child: const Text('Delete'),
+                      ),
+                    ],
+                  ),
+                ) ??
+                false;
+
+            if (!confirmed) return;
+
             for (final e in List<MacroEntry>.from(group.entries)) {
               if (e.id != null) {
                 await provider.deleteMacroEntry(e.id!);
               }
+            }
+
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'Deleted ${group.count} item${group.count == 1 ? '' : 's'}',
+                  ),
+                  backgroundColor: themeProvider.getErrorColor(context),
+                ),
+              );
             }
           },
           icon: Icon(

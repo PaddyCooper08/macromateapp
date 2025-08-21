@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:gal/gal.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'dart:async';
 import '../providers/macro_provider.dart';
 import '../providers/theme_provider.dart';
 
@@ -16,6 +17,7 @@ class AddMealBottomSheet extends StatefulWidget {
 class _AddMealBottomSheetState extends State<AddMealBottomSheet> {
   final _foodController = TextEditingController();
   final _weightController = TextEditingController();
+  final _customNameController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   final ImagePicker _picker = ImagePicker();
 
@@ -25,17 +27,28 @@ class _AddMealBottomSheetState extends State<AddMealBottomSheet> {
   void dispose() {
     _foodController.dispose();
     _weightController.dispose();
+    _customNameController.dispose();
     super.dispose();
   }
 
   Future<void> _addMealFromText() async {
     if (!_formKey.currentState!.validate()) return;
 
+    final macroProvider = Provider.of<MacroProvider>(context, listen: false);
+
+    // Check Gemini usage before proceeding
+    if (!await macroProvider.canUseGemini()) {
+      _showGeminiUsageDialog();
+      return;
+    }
+
     setState(() => _isLoading = true);
 
-    final macroProvider = Provider.of<MacroProvider>(context, listen: false);
     final success = await macroProvider.addMacroEntry(
       _foodController.text.trim(),
+      customName: _customNameController.text.trim().isEmpty
+          ? null
+          : _customNameController.text.trim(),
     );
 
     setState(() => _isLoading = false);
@@ -61,6 +74,14 @@ class _AddMealBottomSheetState extends State<AddMealBottomSheet> {
   }
 
   Future<void> _addMealFromImage(ImageSource source) async {
+    final macroProvider = Provider.of<MacroProvider>(context, listen: false);
+
+    // Check Gemini usage before proceeding
+    if (!await macroProvider.canUseGemini()) {
+      _showGeminiUsageDialog();
+      return;
+    }
+
     try {
       final XFile? image = await _picker.pickImage(
         source: source,
@@ -91,6 +112,9 @@ class _AddMealBottomSheetState extends State<AddMealBottomSheet> {
         _weightController.text.trim().isEmpty
             ? null
             : _weightController.text.trim(),
+        customName: _customNameController.text.trim().isEmpty
+            ? null
+            : _customNameController.text.trim(),
       );
 
       setState(() => _isLoading = false);
@@ -235,20 +259,34 @@ class _AddMealBottomSheetState extends State<AddMealBottomSheet> {
         title: const Text('Describe Your Food'),
         content: Form(
           key: _formKey,
-          child: TextFormField(
-            controller: _foodController,
-            decoration: const InputDecoration(
-              hintText: 'e.g., 100g chicken breast with rice',
-              border: OutlineInputBorder(),
-            ),
-            maxLines: 3,
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return 'Please describe your food';
-              }
-              return null;
-            },
-            autofocus: true,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: _foodController,
+                decoration: const InputDecoration(
+                  hintText: 'e.g., 100g chicken breast with rice',
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 3,
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Please describe your food';
+                  }
+                  return null;
+                },
+                autofocus: true,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _customNameController,
+                decoration: const InputDecoration(
+                  labelText: 'Custom name (optional)',
+                  hintText: 'e.g., My Chicken Rice Bowl',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
           ),
         ),
         actions: [
@@ -277,7 +315,7 @@ class _AddMealBottomSheetState extends State<AddMealBottomSheet> {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text(
-              'Take a photo of the nutrition label or select from your photos, and optionally specify the weight.',
+              'Take a photo of the nutrition label or select from your photos, and optionally specify the weight and a custom name.',
             ),
             const SizedBox(height: 16),
             TextFormField(
@@ -285,6 +323,15 @@ class _AddMealBottomSheetState extends State<AddMealBottomSheet> {
               decoration: const InputDecoration(
                 labelText: 'Weight (optional)',
                 hintText: 'e.g., 150g',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _customNameController,
+              decoration: const InputDecoration(
+                labelText: 'Custom name (optional)',
+                hintText: 'e.g., My Chicken Rice Bowl',
                 border: OutlineInputBorder(),
               ),
             ),
@@ -340,18 +387,33 @@ class _AddMealBottomSheetState extends State<AddMealBottomSheet> {
 
   void _showBarcodeWeightDialog(String barcode) {
     final weightController = TextEditingController();
+    final nameController = TextEditingController();
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Barcode Weight'),
-        content: TextField(
-          controller: weightController,
-          decoration: const InputDecoration(
-            labelText: 'Weight in g (optional)',
-            hintText: 'e.g., 150',
-            border: OutlineInputBorder(),
-          ),
-          keyboardType: TextInputType.number,
+        title: const Text('Barcode Details'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: weightController,
+              decoration: const InputDecoration(
+                labelText: 'Weight in g (optional)',
+                hintText: 'e.g., 150',
+                border: OutlineInputBorder(),
+              ),
+              keyboardType: TextInputType.number,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: nameController,
+              decoration: const InputDecoration(
+                labelText: 'Custom name (optional)',
+                hintText: 'e.g., My Protein Bar',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
         ),
         actions: [
           TextButton(
@@ -371,6 +433,9 @@ class _AddMealBottomSheetState extends State<AddMealBottomSheet> {
                 weightController.text.trim().isEmpty
                     ? null
                     : weightController.text.trim(),
+                customName: nameController.text.trim().isEmpty
+                    ? null
+                    : nameController.text.trim(),
               );
               setState(() => _isLoading = false);
               if (mounted) {
@@ -395,6 +460,158 @@ class _AddMealBottomSheetState extends State<AddMealBottomSheet> {
               }
             },
             child: const Text('Add Meal'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showGeminiUsageDialog() {
+    final macroProvider = Provider.of<MacroProvider>(context, listen: false);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Gemini Usage Limit'),
+        content: Text(
+          'You have used ${macroProvider.geminiUses}/3 Gemini uses.\n\n'
+          'Watch a rewarded ad to get 10 more uses, or simulate ad rewards during testing.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              _loadAndShowRewardedAd();
+            },
+            child: const Text('Watch Ad'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _loadAndShowRewardedAd() {
+    final macroProvider = Provider.of<MacroProvider>(context, listen: false);
+
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const AlertDialog(
+        content: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 16),
+            Text('Loading ad...'),
+          ],
+        ),
+      ),
+    );
+
+    // Add timeout to prevent infinite loading
+    bool adHandled = false;
+    Timer(const Duration(seconds: 10), () {
+      if (!adHandled && mounted) {
+        adHandled = true;
+        Navigator.of(context).pop(); // Dismiss loading dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Ad loading timed out. Please try again.'),
+            backgroundColor: Provider.of<ThemeProvider>(
+              context,
+              listen: false,
+            ).getErrorColor(context),
+          ),
+        );
+      }
+    });
+
+    macroProvider.loadRewardedAd(
+      () {
+        if (adHandled) return;
+        adHandled = true;
+        // Ad loaded successfully, dismiss loading dialog
+        Navigator.of(context).pop();
+
+        // Show the ad immediately
+        macroProvider.showRewardedAd(
+          onRewarded: () async {
+            await macroProvider.resetGeminiUses();
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('You earned 10 more Gemini uses!'),
+                ),
+              );
+            }
+          },
+          onClosed: () {
+            // Ad closed
+          },
+          onFailed: () {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: const Text('Failed to show ad. Please try again.'),
+                  backgroundColor: Provider.of<ThemeProvider>(
+                    context,
+                    listen: false,
+                  ).getErrorColor(context),
+                ),
+              );
+            }
+          },
+        );
+      },
+      onFailed: () {
+        if (adHandled) return;
+        adHandled = true;
+        // Ad failed to load, dismiss loading dialog and show debug option
+        Navigator.of(context).pop();
+        if (mounted) {
+          _showAdFailedDialog();
+        }
+      },
+    );
+  }
+
+  void _showAdFailedDialog() {
+    final macroProvider = Provider.of<MacroProvider>(context, listen: false);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Ad Failed to Load'),
+        content: const Text(
+          'No ads are available right now. This is common during testing.\n\n'
+          'For testing purposes, you can simulate watching an ad to get 10 more Gemini uses.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              // Simulate ad reward for testing
+              await macroProvider.resetGeminiUses();
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      '🎉 Testing: You earned 10 more Gemini uses!',
+                    ),
+                  ),
+                );
+              }
+            },
+            child: const Text('Simulate Ad (Testing)'),
           ),
         ],
       ),

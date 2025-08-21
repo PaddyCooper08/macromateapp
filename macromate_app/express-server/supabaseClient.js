@@ -298,4 +298,34 @@ async function saveMacrosToDb(userId, date, mealTime, foodItem, protein, carbs, 
     }
   }
 
-export { saveMacrosToDb, getDailyMacros, getPreviousDaysMacros, deleteMacroLog, saveFavoriteItem, getFavoriteItems, deleteFavoriteItem, updateFavoriteItem };
+  /**
+   * Update a macro log entry name
+   * @param {string} logId - The UUID of the log entry to update
+   * @param {string} userId - The user ID to ensure ownership
+   * @param {string} newFoodItem - The new food item name
+   */
+  async function updateMacroLogName(logId, userId, newFoodItem) {
+    try {
+      const { data, error } = await supabase
+        .from('macro_logs')
+        .update({ food_item: newFoodItem })
+        .match({ id: logId, user_id: userId.toString() })
+        .select();
+
+      if (error) {
+        console.error('Supabase update error:', error);
+        throw new Error(`Failed to update macro log: ${error.message}`);
+      }
+
+      if (!data || data.length === 0) {
+        throw new Error('Macro log not found or user does not have permission to update.');
+      }
+
+      return data[0];
+    } catch (error) {
+      console.error('Error updating macro log name:', error);
+      throw error;
+    }
+  }
+
+export { saveMacrosToDb, getDailyMacros, getPreviousDaysMacros, deleteMacroLog, saveFavoriteItem, getFavoriteItems, deleteFavoriteItem, updateFavoriteItem, updateMacroLogName };

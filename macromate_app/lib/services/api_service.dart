@@ -28,6 +28,7 @@ class ApiService {
     final uri = Uri.parse('$baseUrl$endpoint');
     final Map<String, String> defaultHeaders = {
       'Content-Type': 'application/json',
+      'Accept': 'application/json',
       if (apiKey.isNotEmpty) 'x-api-key': apiKey,
       ...?headers,
     };
@@ -64,12 +65,22 @@ class ApiService {
           throw Exception('Unsupported HTTP method: $method');
       }
 
-      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      Map<String, dynamic> data;
+      try {
+        data = jsonDecode(response.body) as Map<String, dynamic>;
+      } catch (e) {
+        final snippet = response.body.isNotEmpty
+            ? response.body.substring(0, response.body.length.clamp(0, 200))
+            : '<empty body>';
+        throw Exception(
+          'Unexpected response (status ${response.statusCode}). Body starts with: $snippet',
+        );
+      }
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         return data;
       } else {
-        throw Exception(data['message'] ?? 'Request failed');
+        throw Exception(data['message'] ?? data['error'] ?? 'Request failed');
       }
     } catch (e) {
       throw Exception('Network error: $e');
@@ -242,6 +253,24 @@ class ApiService {
 
     if (response['success'] != true) {
       throw Exception(response['error'] ?? 'Failed to delete macro log');
+    }
+  }
+
+  // Edit macro log name
+  static Future<MacroEntry> editMacroLogName(
+    String userId,
+    String logId,
+    String newName,
+  ) async {
+    final response = await _makeRequest(
+      '/api/macro-log/$logId',
+      'PUT',
+      body: {'userId': userId, 'foodItem': newName},
+    );
+    if (response['success'] == true) {
+      return MacroEntry.fromJson(response['data']);
+    } else {
+      throw Exception(response['error'] ?? 'Failed to rename meal');
     }
   }
 
